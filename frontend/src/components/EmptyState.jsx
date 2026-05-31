@@ -6,7 +6,7 @@ export default function EmptyState({ icon = "🔍", title, body }) {
       textAlign: "center", gap: "var(--sp-3)",
     }}>
       <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>{icon}</div>
-      <p style={{ fontSize: "var(--text-md)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
+      <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
         {title}
       </p>
       {body && (

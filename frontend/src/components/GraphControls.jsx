@@ -6,7 +6,7 @@ export default function GraphControls({ cyRef }) {
       style={{
         width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
         background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
-        color: "var(--text-2)", cursor: "pointer", fontSize: "var(--text-md)",
+        color: "var(--text-2)", cursor: "pointer", fontSize: "var(--text-base)",
         transition: "background var(--transition)",
       }}
       onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}

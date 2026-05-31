@@ -41,7 +41,7 @@ export default function ScoreRing({ score, size = SIZE }) {
         gap: 0,
       }}>
         <span style={{
-          fontSize: size < 56 ? "var(--text-sm)" : "var(--text-md)",
+          fontSize: size < 56 ? "var(--text-sm)" : "var(--text-base)",
           fontWeight: "var(--w-bold)",
           color: ringColor(score),
           lineHeight: 1,

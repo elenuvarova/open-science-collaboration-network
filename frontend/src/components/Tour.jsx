@@ -50,7 +50,7 @@ export default function Tour({ onClose }) {
         padding: "2rem", position: "relative",
       }}>
         {/* Progress dots */}
-        <div style={{ display: "flex", gap: "6px", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", gap: "6px", marginBottom: "var(--sp-6)", justifyContent: "center" }}>
           {STEPS.map((_, i) => (
             <div key={i} onClick={() => setStep(i)} style={{
               width: i === step ? 20 : 8, height: 8, borderRadius: 4,
@@ -60,41 +60,42 @@ export default function Tour({ onClose }) {
           ))}
         </div>
 
-        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>{current.img}</div>
-        <h2 style={{ fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.75rem", lineHeight: 1.4 }}>
+        <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)", textAlign: "center" }}>{current.img}</div>
+        <h2 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--w-bold)", marginBottom: "var(--sp-3)", lineHeight: "var(--leading-snug)", textAlign: "center" }}>
           {current.title}
         </h2>
-        <p style={{ fontSize: "0.875rem", color: "var(--muted)", lineHeight: 1.7, marginBottom: "2rem" }}>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)", marginBottom: "var(--sp-8)", textAlign: "center" }}>
           {current.body}
         </p>
 
-        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: "var(--sp-3)", justifyContent: "center" }}>
           {step > 0 && (
             <button onClick={() => setStep(s => s - 1)} style={{
-              background: "none", border: "1px solid var(--border)", color: "var(--muted)",
-              borderRadius: 8, padding: "0.5rem 1.1rem", cursor: "pointer", fontSize: "0.875rem",
+              background: "none", border: "1px solid var(--border)", color: "var(--text-2)",
+              borderRadius: "var(--r-md)", padding: "var(--sp-2) var(--sp-4)", cursor: "pointer",
+              fontSize: "var(--text-sm)", fontWeight: "var(--w-medium)",
             }}>Back</button>
           )}
           {!isLast && (
             <button onClick={() => setStep(s => s + 1)} style={{
               background: "var(--accent)", border: "none", color: "#fff",
-              borderRadius: 8, padding: "0.5rem 1.25rem", cursor: "pointer",
-              fontSize: "0.875rem", fontWeight: 600,
+              borderRadius: "var(--r-md)", padding: "var(--sp-2) var(--sp-5)", cursor: "pointer",
+              fontSize: "var(--text-sm)", fontWeight: "var(--w-semibold)",
             }}>Next</button>
           )}
           {isLast && (
             <button onClick={finish} style={{
               background: "var(--accent)", border: "none", color: "#fff",
-              borderRadius: 8, padding: "0.5rem 1.25rem", cursor: "pointer",
-              fontSize: "0.875rem", fontWeight: 600,
+              borderRadius: "var(--r-md)", padding: "var(--sp-2) var(--sp-5)", cursor: "pointer",
+              fontSize: "var(--text-sm)", fontWeight: "var(--w-semibold)",
             }}>Get started</button>
           )}
         </div>
 
         <button onClick={finish} style={{
-          position: "absolute", top: "1rem", right: "1rem",
-          background: "none", border: "none", color: "var(--muted)",
-          cursor: "pointer", fontSize: "1.1rem", lineHeight: 1,
+          position: "absolute", top: "var(--sp-4)", right: "var(--sp-4)",
+          background: "none", border: "none", color: "var(--text-3)",
+          cursor: "pointer", fontSize: "var(--text-base)", lineHeight: 1,
         }}>✕</button>
       </div>
     </div>

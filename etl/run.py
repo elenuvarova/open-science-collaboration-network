@@ -61,9 +61,11 @@ def run_topic(topic_cfg: dict):
         print(f"  → {len(authorships_by_work)} co-authorship works, {len(all_institutions)} institutions")
 
         # ── 2. Upsert institutions ────────────────────────────────────────────
+        # Sort by openalex_id so all parallel processes acquire row-locks in the
+        # same order — prevents deadlocks when multiple topics run concurrently.
         print("Step 2/6  Upserting institutions…")
         oa_inst_id_map: dict[str, int] = {}
-        for oa_id, inst in all_institutions.items():
+        for oa_id, inst in sorted(all_institutions.items()):
             db_inst = load.upsert_institution(
                 db,
                 openalex_id=oa_id,

@@ -14,24 +14,21 @@
   --sp-12: 48px;
 
   /*
-   * Type scale — 5 clear visual levels, not 8 similar ones.
+   * Type scale — 5 levels with clear 1.5× jumps between them.
    *
    * Level 1  caption  : 11px — footnotes, graph labels, eyebrow uppercase
    * Level 2  secondary: 13px — meta, nav, filter, muted
-   * Level 3  body     : 15px — primary content, list item names
-   * Level 4  heading  : 22px — card titles, institution name in profile
-   * Level 5  display  : 32px — big stat numbers
+   * Level 3  body     : 16px — primary content, list item names
+   * Level 4  heading  : 24px — page titles, card headings, gap verdicts
+   * Level 5  display  : 36px — big stat numbers
    *
-   * Nothing lives between 15 and 22 — that's the intentional gap.
+   * 11 → 13 → 16 → 24 → 36 — each step is visually obvious.
    */
-  --text-xs:   0.6875rem; /* 11px — caption / eyebrow only         */
-  --text-sm:   0.8125rem; /* 13px — secondary / nav / meta          */
-  --text-base: 0.9375rem; /* 15px — primary body, list names        */
-  --text-lg:   1rem;      /* 16px — slightly larger body when needed */
-  --text-xl:   1.1875rem; /* 19px — subsection titles               */
-  --text-2xl:  1.375rem;  /* 22px — card / section headings          */
-  --text-3xl:  2rem;      /* 32px — display numbers / stat values    */
-  --text-4xl:  2.5rem;    /* 40px — hero numbers (future use)        */
+  --text-xs:   0.6875rem; /* 11px — caption / eyebrow only   */
+  --text-sm:   0.8125rem; /* 13px — secondary / nav / meta   */
+  --text-base: 1rem;      /* 16px — primary body, list names */
+  --text-2xl:  1.5rem;    /* 24px — headings, verdicts       */
+  --text-3xl:  2.25rem;   /* 36px — display stat numbers     */
 
   /* Font weights */
   --w-normal:   400;
@@ -165,7 +162,7 @@ a:hover { color: var(--accent-h); }
   transition: background var(--transition), border-color var(--transition);
 }
 
-/* Level 3 (15px) semibold — distinctly heavier than nav */
+/* Level 3 (16px) semibold — distinctly heavier than nav */
 .topbar-title {
   font-size: var(--text-base);
   font-weight: var(--w-semibold);
@@ -282,9 +279,9 @@ a:hover { color: var(--accent-h); }
 
 /* ── Page title ── */
 .page-title {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   font-weight: var(--w-semibold);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--text-1);
   margin-bottom: var(--sp-5);
   line-height: var(--leading-tight);
@@ -356,7 +353,7 @@ a:hover { color: var(--accent-h); }
 
 .inst-info { flex: 1; min-width: 0; }
 
-/* Level 3 (15px) semibold — primary content, clearly above meta */
+/* Level 3 (16px) semibold — primary content, clearly above meta */
 .inst-name {
   font-size: var(--text-base);
   font-weight: var(--w-semibold);
@@ -520,7 +517,7 @@ a:hover { color: var(--accent-h); }
   margin-bottom: var(--sp-2);
 }
 
-/* Level 4 (22px bold) — the verdict is the primary info on this card */
+/* Level 4 (24px bold) — the verdict is the primary info on this card */
 .gap-card-status {
   font-size: var(--text-2xl);
   font-weight: var(--w-bold);
@@ -581,10 +578,10 @@ a:hover { color: var(--accent-h); }
   margin: var(--sp-4) 0;
 }
 
-/* Stat block — Level 5 (32px) number, Level 1 eyebrow label */
+/* Stat block — Level 5 (36px) number, Level 1 eyebrow label */
 .stat { text-align: left; }
 .stat-value {
-  font-size: var(--text-3xl);   /* 32px — display number */
+  font-size: var(--text-3xl);   /* 36px — display number */
   font-weight: var(--w-bold);
   color: var(--text-1);
   line-height: var(--leading-tight);
@@ -592,7 +589,7 @@ a:hover { color: var(--accent-h); }
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
-  font-size: var(--text-xs);    /* 11px — eyebrow, clearly subordinate */
+  font-size: var(--text-xs);    /* 11px — eyebrow label, clearly subordinate */
   font-weight: var(--w-medium);
   color: var(--text-3);
   margin-top: var(--sp-1);
@@ -611,7 +608,7 @@ a:hover { color: var(--accent-h); }
   line-height: var(--leading-normal);
 }
 
-/* Section heading — Level 4 */
+/* Section heading — Level 4 (24px) */
 .section-title {
   font-size: var(--text-2xl);
   font-weight: var(--w-semibold);
