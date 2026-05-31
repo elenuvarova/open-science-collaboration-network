@@ -44,6 +44,32 @@ def set_metric(db, institution_id, topic_id, **kwargs):
     return m
 
 
+def upsert_project(db, cordis_id, **kwargs):
+    proj = db.query(models.Project).filter_by(cordis_id=cordis_id).first()
+    if proj is None:
+        proj = models.Project(cordis_id=cordis_id, **kwargs)
+        db.add(proj)
+        db.flush()
+    else:
+        for k, v in kwargs.items():
+            setattr(proj, k, v)
+    return proj
+
+
+def upsert_project_participant(db, project_id, institution_id, role):
+    pp = (
+        db.query(models.ProjectParticipant)
+        .filter_by(project_id=project_id, institution_id=institution_id)
+        .first()
+    )
+    if pp is None:
+        pp = models.ProjectParticipant(
+            project_id=project_id, institution_id=institution_id, role=role
+        )
+        db.add(pp)
+    return pp
+
+
 def add_edge(db, source_id, target_id, type_, weight=1.0):
     db.add(
         models.CollaborationEdge(
@@ -60,6 +86,8 @@ __all__ = [
     "init_schema",
     "get_or_create_topic",
     "upsert_institution",
+    "upsert_project",
+    "upsert_project_participant",
     "set_metric",
     "add_edge",
 ]
