@@ -82,6 +82,7 @@ export default function Shortlist({ topicId }) {
   const [loading, setLoading] = useState(true);
   const [country, setCountry] = useState("");
   const [type, setType] = useState("");
+  const [minScore, setMinScore] = useState(0);
   const [selected, setSelected] = useState(null);
   const [hovered, setHovered] = useState(null);
   const [hoverAnchor, setHoverAnchor] = useState(null);
@@ -93,8 +94,9 @@ export default function Shortlist({ topicId }) {
     const params = { topic: topicId, limit: 100 };
     if (country) params.country = country;
     if (type) params.type = type;
+    if (minScore > 0) params.min_score = minScore;
     getInstitutions(params).then(setList).finally(() => setLoading(false));
-  }, [topicId, country, type]);
+  }, [topicId, country, type, minScore]);
 
   function onMouseEnter(inst, el) {
     clearTimeout(hoverTimer.current);
@@ -124,6 +126,13 @@ export default function Shortlist({ topicId }) {
         <select className="filter-select" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">All types</option>
           {TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+        </select>
+        <select className="filter-select" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}>
+          <option value={0}>Any score</option>
+          <option value={50}>Score 50+</option>
+          <option value={60}>Score 60+</option>
+          <option value={70}>Score 70+</option>
+          <option value={80}>Score 80+</option>
         </select>
         {!loading && <span className="muted">{list.length} institutions</span>}
       </div>
