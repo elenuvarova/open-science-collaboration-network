@@ -13,6 +13,11 @@ function scoreClass(s) {
   return s >= 70 ? "score-high" : s >= 50 ? "score-mid" : "score-low";
 }
 
+const SCORE_MAX = {
+  topic_relevance: 30, publication_activity: 20, eu_project_participation: 20,
+  network_centrality: 15, country_diversity: 10, recent_activity: 5,
+};
+
 function HoverCard({ inst, anchor }) {
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const cardRef = useRef(null);
@@ -63,9 +68,9 @@ function HoverCard({ inst, anchor }) {
       {entries.map(([k, v]) => (
         <div key={k} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: 4 }}>
           <div style={{ flex: 1, height: 4, background: "var(--border)", borderRadius: "var(--r-full)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.min((v / 30) * 100, 100)}%`, background: "var(--accent)", borderRadius: "var(--r-full)" }} />
+            <div style={{ height: "100%", width: `${Math.min((v / (SCORE_MAX[k] || 30)) * 100, 100)}%`, background: "var(--accent)", borderRadius: "var(--r-full)" }} />
           </div>
-          <span style={{ fontSize: "0.65rem", color: "var(--text-3)", width: 24, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{v.toFixed(0)}</span>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", width: 24, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{v.toFixed(0)}</span>
         </div>
       ))}
     </div>

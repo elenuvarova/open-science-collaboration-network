@@ -22,8 +22,8 @@ const STEPS = [
     img: "🧩",
   },
   {
-    title: "Seed topic: Climate adaptation",
-    body: "The current dataset covers European climate adaptation research 2020–2025 (227k works, 2800+ institutions). Additional topics — AI in education, soil health, circular economy — can be ingested by re-running the ETL with a different topic config.",
+    title: "6 research topics, live data",
+    body: "The dataset covers 6 topics — Climate adaptation, AI in education, Soil health, Circular economy, Digital health, Biodiversity conservation — sourced weekly from OpenAlex and CORDIS. Switch topics using the selector in the header.",
     img: "🌍",
   },
 ];
