@@ -3,6 +3,7 @@ import { getTopics } from "./api";
 import NetworkMap from "./pages/NetworkMap";
 import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
+import Tour from "./components/Tour";
 
 const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
@@ -14,6 +15,7 @@ export default function App() {
   const [topics, setTopics] = useState([]);
   const [topicId, setTopicId] = useState(null);
   const [page, setPage] = useState("shortlist");
+  const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
 
   useEffect(() => {
     getTopics().then((t) => {
@@ -26,8 +28,14 @@ export default function App() {
 
   return (
     <div className="layout">
+      {showTour && <Tour onClose={() => setShowTour(false)} />}
       <header className="topbar">
         <span className="topbar-title">Open Science Collaboration Network</span>
+        <button
+          onClick={() => setShowTour(true)}
+          title="How it works"
+          style={{ marginLeft: "auto", background: "none", border: "1px solid var(--border)", color: "var(--muted)", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: "0.8rem", flexShrink: 0 }}
+        >?</button>
         {topics.length > 1 && (
           <select
             value={topicId ?? ""}
