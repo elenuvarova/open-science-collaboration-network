@@ -1,10 +1,15 @@
 const TYPE_CONFIG = {
   university:  { label: "University",   color: "#60a5fa", bg: "#1e3a6e" },
+  education:   { label: "University",   color: "#60a5fa", bg: "#1e3a6e" },
   company:     { label: "Company",      color: "#4ade80", bg: "#14532d" },
   ngo:         { label: "NGO",          color: "#fbbf24", bg: "#451a03" },
+  nonprofit:   { label: "NGO",          color: "#fbbf24", bg: "#451a03" },
   public_body: { label: "Public body",  color: "#c084fc", bg: "#2e1065" },
+  government:  { label: "Public body",  color: "#c084fc", bg: "#2e1065" },
   healthcare:  { label: "Healthcare",   color: "#f472b6", bg: "#4a0a2e" },
   facility:    { label: "Facility",     color: "#34d399", bg: "#065f46" },
+  archive:     { label: "Facility",     color: "#34d399", bg: "#065f46" },
+  funder:      { label: "Funder",       color: "#fb923c", bg: "#431407" },
   other:       { label: "Other",        color: "#94a3b8", bg: "#1e293b" },
   unknown:     { label: "Unknown",      color: "#94a3b8", bg: "#1e293b" },
 };
@@ -12,11 +17,16 @@ const TYPE_CONFIG = {
 // Light theme overrides
 const TYPE_CONFIG_LIGHT = {
   university:  { color: "#1d4ed8", bg: "#dbeafe" },
+  education:   { color: "#1d4ed8", bg: "#dbeafe" },
   company:     { color: "#16a34a", bg: "#dcfce7" },
   ngo:         { color: "#b45309", bg: "#fef3c7" },
+  nonprofit:   { color: "#b45309", bg: "#fef3c7" },
   public_body: { color: "#7c3aed", bg: "#ede9fe" },
+  government:  { color: "#7c3aed", bg: "#ede9fe" },
   healthcare:  { color: "#be185d", bg: "#fce7f3" },
   facility:    { color: "#0f766e", bg: "#ccfbf1" },
+  archive:     { color: "#0f766e", bg: "#ccfbf1" },
+  funder:      { color: "#c2410c", bg: "#fff7ed" },
   other:       { color: "#64748b", bg: "#f1f5f9" },
   unknown:     { color: "#64748b", bg: "#f1f5f9" },
 };
