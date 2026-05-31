@@ -1,6 +1,7 @@
 import os
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import Base, db_kind, engine
@@ -21,6 +22,15 @@ app.include_router(graph.router)
 if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") == "1":
     public_dir = os.path.join(os.path.dirname(__file__), "public")
     if os.path.isdir(public_dir):
-        app.mount("/", StaticFiles(directory=public_dir, html=True), name="static")
+        # Mount only the /assets/ subdir — avoids app.mount("/") intercepting /api/* routes.
+        assets_dir = os.path.join(public_dir, "assets")
+        if os.path.isdir(assets_dir):
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        # Catch-all for SPA client-side routing. Registered last so /api/* routes
+        # (inserted above) are matched first.
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str = ""):
+            return FileResponse(os.path.join(public_dir, "index.html"))
 
 print(f"db: {db_kind}")
