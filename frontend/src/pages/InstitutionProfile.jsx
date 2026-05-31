@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getInstitution } from "../api";
 import ScoreCard from "../components/ScoreCard";
+import ScoreRing from "../components/ScoreRing";
+import TypeBadge from "../components/TypeBadge";
 
 export default function InstitutionProfile({ id, topicId, onBack }) {
   const [inst, setInst] = useState(null);
@@ -10,50 +12,72 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getInstitution(id, topicId)
-      .then(setInst)
-      .catch(setError)
-      .finally(() => setLoading(false));
+    getInstitution(id, topicId).then(setInst).catch(setError).finally(() => setLoading(false));
   }, [id, topicId]);
 
-  if (loading) return <div className="spinner">Loading…</div>;
-  if (error)   return <div className="muted">Error: {error.message}</div>;
-  if (!inst)   return <div className="muted">Not found</div>;
+  if (loading) return (
+    <div>
+      {onBack && <button className="back-btn" onClick={onBack}>← Back</button>}
+      <div className="card">
+        <div className="skel" style={{ height: 22, width: "55%", borderRadius: "var(--r-sm)", marginBottom: "var(--sp-2)" }} />
+        <div className="skel" style={{ height: 13, width: "30%", borderRadius: "var(--r-sm)", marginBottom: "var(--sp-5)" }} />
+        <div style={{ display: "flex", gap: "var(--sp-6)" }}>
+          {[1,2,3].map(i => <div key={i} className="skel" style={{ height: 48, width: 80, borderRadius: "var(--r-md)" }} />)}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (error) return <div className="muted">Error: {error.message}</div>;
+  if (!inst)  return <div className="muted">Not found</div>;
 
   return (
-    <div>
+    <div className="fade-in">
       {onBack && <button className="back-btn" onClick={onBack}>← Back to shortlist</button>}
       <div className="card">
-        <h2 style={{ fontSize: "var(--text-xl)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-1)", letterSpacing: "-0.01em" }}>
-          {inst.name}
-        </h2>
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", marginBottom: "var(--sp-5)" }}>
-          {[inst.country, inst.type?.replace("_", " ")].filter(Boolean).join(" · ")}
-          {inst.ror_id && (
-            <> · <a href={inst.ror_id} target="_blank" rel="noreferrer">ROR ↗</a></>
-          )}
-        </p>
-
-        <div style={{ display: "flex", gap: "var(--sp-6)", marginBottom: "var(--sp-5)", flexWrap: "wrap" }}>
-          <div className="stat">
-            <div className="stat-value">{inst.recent_works}</div>
-            <div className="stat-label">publications 2020–25</div>
-          </div>
-          <div className="stat">
-            <div className="stat-value">{inst.eu_projects}</div>
-            <div className="stat-label">EU projects</div>
-          </div>
-          {inst.community_id != null && (
-            <div className="stat">
-              <div className="stat-value">#{inst.community_id}</div>
-              <div className="stat-label">cluster</div>
+        {/* Header */}
+        <div style={{ display: "flex", gap: "var(--sp-4)", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
+          <ScoreRing score={inst.partner_fit_score} size={64} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: "var(--text-xl)", fontWeight: "var(--w-semibold)", letterSpacing: "-0.01em", lineHeight: "var(--leading-snug)", marginBottom: "var(--sp-2)" }}>
+              {inst.name}
+            </h2>
+            <div style={{ display: "flex", gap: "var(--sp-2)", alignItems: "center", flexWrap: "wrap" }}>
+              <TypeBadge type={inst.type} />
+              {inst.country && (
+                <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", fontWeight: "var(--w-medium)" }}>
+                  {inst.country}
+                </span>
+              )}
+              {inst.ror_id && (
+                <a href={inst.ror_id} target="_blank" rel="noreferrer"
+                   style={{ fontSize: "var(--text-xs)", color: "var(--accent)" }}>
+                  ROR ↗
+                </a>
+              )}
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "flex", gap: "var(--sp-6)", marginBottom: "var(--sp-5)", flexWrap: "wrap" }}>
+          <Stat value={inst.recent_works} label="publications 2020–25" />
+          <Stat value={inst.eu_projects}  label="EU projects" />
+          {inst.community_id != null && <Stat value={`#${inst.community_id}`} label="cluster" />}
         </div>
 
         <div className="divider" />
         <ScoreCard score={inst.partner_fit_score} breakdown={inst.score_breakdown} />
       </div>
+    </div>
+  );
+}
+
+function Stat({ value, label }) {
+  return (
+    <div className="stat">
+      <div className="stat-value">{value}</div>
+      <div className="stat-label">{label}</div>
     </div>
   );
 }

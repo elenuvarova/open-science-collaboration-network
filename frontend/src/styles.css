@@ -573,3 +573,56 @@ a:hover { color: var(--accent-h); }
   margin-top: 2px;
   line-height: var(--leading-normal);
 }
+
+/* ═══════════════════════════════════════════════════════
+   Skeleton loading
+   ═══════════════════════════════════════════════════════ */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.skel {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-3) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--r-sm);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Page & element transitions
+   ═══════════════════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fade-in  { animation: fadeIn     0.18s ease both; }
+.fade-in-fast { animation: fadeInFast 0.12s ease both; }
+
+/* Stagger children in lists */
+.inst-row { animation: fadeIn 0.15s ease both; }
+.inst-row:nth-child(1)  { animation-delay: 0.02s; }
+.inst-row:nth-child(2)  { animation-delay: 0.04s; }
+.inst-row:nth-child(3)  { animation-delay: 0.06s; }
+.inst-row:nth-child(4)  { animation-delay: 0.08s; }
+.inst-row:nth-child(5)  { animation-delay: 0.10s; }
+.inst-row:nth-child(n+6){ animation-delay: 0.12s; }
+
+.gap-card { animation: fadeIn 0.18s ease both; }
+.gap-card:nth-child(1) { animation-delay: 0.03s; }
+.gap-card:nth-child(2) { animation-delay: 0.06s; }
+.gap-card:nth-child(3) { animation-delay: 0.09s; }
+.gap-card:nth-child(4) { animation-delay: 0.12s; }
+.gap-card:nth-child(5) { animation-delay: 0.15s; }
+.gap-card:nth-child(6) { animation-delay: 0.18s; }

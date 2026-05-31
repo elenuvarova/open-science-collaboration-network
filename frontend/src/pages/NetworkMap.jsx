@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getGraph } from "../api";
 import GraphCanvas from "../components/GraphCanvas";
 import InstitutionProfile from "./InstitutionProfile";
+import EmptyState from "../components/EmptyState";
 
 export default function NetworkMap({ topicId }) {
   const [graph, setGraph] = useState({ nodes: [], edges: [] });
@@ -24,11 +25,13 @@ export default function NetworkMap({ topicId }) {
       <div className="graph-canvas">
         {loading
           ? <div className="spinner">Building graph…</div>
-          : <GraphCanvas
-              nodes={graph.nodes}
-              edges={graph.edges}
-              onNodeClick={(data) => setSelected(Number(data.id))}
-            />
+          : graph.nodes.length === 0
+            ? <EmptyState icon="🕸️" title="No graph data" body="Run the ETL to populate the collaboration network for this topic." />
+            : <GraphCanvas
+                nodes={graph.nodes}
+                edges={graph.edges}
+                onNodeClick={(data) => setSelected(data ? Number(data.id) : null)}
+              />
         }
       </div>
 
@@ -47,9 +50,8 @@ export default function NetworkMap({ topicId }) {
               <option value="public_body">Public bodies</option>
             </select>
           </div>
-          <p className="muted" style={{ fontSize: "var(--text-xs)", lineHeight: "var(--leading-relaxed)" }}>
-            {graph.nodes.length} nodes · {graph.edges.length} edges<br />
-            Size = centrality · Color = cluster
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)" }}>
+            {graph.nodes.length} nodes · {graph.edges.length} edges
           </p>
         </div>
 
@@ -57,8 +59,8 @@ export default function NetworkMap({ topicId }) {
           ? <InstitutionProfile id={selected} topicId={topicId} onBack={() => setSelected(null)} />
           : (
             <div className="card">
-              <p className="muted" style={{ fontSize: "var(--text-xs)", lineHeight: "var(--leading-relaxed)" }}>
-                Click a node to see the institution profile and Partner Fit Score breakdown.
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)" }}>
+                Click a node to see the institution profile and Partner Fit Score breakdown. Use +/− or pinch to zoom.
               </p>
             </div>
           )

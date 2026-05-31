@@ -61,15 +61,22 @@ export default function App() {
 
         <div className="topbar-actions">
           {topics.length > 0 && (
-            <select
-              className="topic-select"
-              value={topicId ?? ""}
-              onChange={(e) => setTopicId(Number(e.target.value))}
-            >
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+            <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+              <select
+                className="topic-select"
+                value={topicId ?? ""}
+                onChange={(e) => setTopicId(Number(e.target.value))}
+                style={{ paddingRight: "var(--sp-6)", appearance: "none", WebkitAppearance: "none" }}
+              >
+                {topics.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <span style={{
+                position: "absolute", right: "var(--sp-2)", pointerEvents: "none",
+                color: "var(--text-3)", fontSize: "0.6rem", lineHeight: 1,
+              }}>▾</span>
+            </div>
           )}
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <button
@@ -81,7 +88,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className={isWide ? "page-wide" : "page"}>
+      <main key={page} className={`fade-in ${isWide ? "page-wide" : "page"}`}>
         {!topicId && <div className="spinner">Loading topics…</div>}
         {topicId && page === "shortlist" && <Shortlist topicId={topicId} />}
         {topicId && page === "network"   && <NetworkMap topicId={topicId} />}
