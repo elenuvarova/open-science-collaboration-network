@@ -3,7 +3,11 @@
 Functional upsert helpers used by both seed_sample.py (dev demo data) and the
 real Phase-2 pipeline (run.py). Idempotent on natural keys.
 """
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+
 from _db import SessionLocal, init_schema, models
+from db import db_kind
 
 
 def get_or_create_topic(db, name, keywords=None):
@@ -16,17 +20,31 @@ def get_or_create_topic(db, name, keywords=None):
 
 
 def upsert_institution(db, **kwargs):
-    inst = None
-    if kwargs.get("openalex_id"):
-        inst = db.query(models.Institution).filter_by(openalex_id=kwargs["openalex_id"]).first()
-    if inst is None:
-        inst = models.Institution(**kwargs)
-        db.add(inst)
+    """Race-safe upsert: uses ON CONFLICT DO UPDATE on Postgres."""
+    if db_kind == "postgres":
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        stmt = (
+            pg_insert(models.Institution)
+            .values(**kwargs)
+            .on_conflict_do_update(
+                index_elements=["openalex_id"],
+                set_={k: v for k, v in kwargs.items() if k != "openalex_id"},
+            )
+            .returning(models.Institution.id)
+        )
+        row = db.execute(stmt).fetchone()
         db.flush()
+        return db.get(models.Institution, row[0])
     else:
-        for k, v in kwargs.items():
-            setattr(inst, k, v)
-    return inst
+        inst = db.query(models.Institution).filter_by(openalex_id=kwargs.get("openalex_id")).first()
+        if inst is None:
+            inst = models.Institution(**kwargs)
+            db.add(inst)
+            db.flush()
+        else:
+            for k, v in kwargs.items():
+                setattr(inst, k, v)
+        return inst
 
 
 def set_metric(db, institution_id, topic_id, **kwargs):

@@ -44,7 +44,10 @@ def _read_csv_from_zip(data: bytes, filename: str) -> pd.DataFrame:
         if match is None:
             raise FileNotFoundError(f"{filename} not in ZIP. Files: {names[:10]}")
         with z.open(match) as f:
-            return pd.read_csv(f, sep=";", encoding="utf-8-sig", low_memory=False)
+            return pd.read_csv(
+                f, sep=";", encoding="utf-8-sig",
+                low_memory=False, on_bad_lines="skip",
+            )
 
 
 def _is_climate_related(row) -> bool:
