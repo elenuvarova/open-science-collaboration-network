@@ -1,6 +1,6 @@
 const TYPE_CONFIG = {
-  university:  { label: "University",   color: "#60a5fa", bg: "#1e3a6e" },
-  education:   { label: "University",   color: "#60a5fa", bg: "#1e3a6e" },
+  university:  { label: "Education",    color: "#60a5fa", bg: "#1e3a6e" },
+  education:   { label: "Education",    color: "#60a5fa", bg: "#1e3a6e" },
   company:     { label: "Company",      color: "#4ade80", bg: "#14532d" },
   ngo:         { label: "NGO",          color: "#fbbf24", bg: "#451a03" },
   nonprofit:   { label: "NGO",          color: "#fbbf24", bg: "#451a03" },
