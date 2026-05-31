@@ -61,6 +61,24 @@ TOPICS = [
         "cordis_keywords": ["circular econom", "recycl", "waste reduction", "closed-loop",
                             "industrial symbios", "sustainable production"],
     },
+    {
+        "name": "Digital health",
+        "search": "digital health technology",
+        "keywords": ["digital health", "mHealth", "telemedicine", "health informatics",
+                     "electronic health records", "wearable health", "remote patient monitoring"],
+        "cordis_keywords": ["digital health", "mhealth", "telemedicin", "health informatic",
+                            "electronic health", "wearable health", "remote patient",
+                            "ehealth", "e-health"],
+    },
+    {
+        "name": "Biodiversity conservation",
+        "search": "biodiversity conservation",
+        "keywords": ["biodiversity conservation", "species extinction", "habitat loss",
+                     "ecosystem services", "wildlife conservation", "protected areas"],
+        "cordis_keywords": ["biodiversit", "species extinc", "habitat loss",
+                            "ecosystem service", "wildlife conserv", "protected area",
+                            "nature restor"],
+    },
 ]
 
 # Active topic for single-topic runs (overridden by run.py args)
