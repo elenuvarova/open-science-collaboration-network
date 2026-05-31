@@ -13,15 +13,25 @@
   --sp-10: 40px;
   --sp-12: 48px;
 
-  /* Type scale */
-  --text-xs:   0.6875rem; /* 11px */
-  --text-sm:   0.8125rem; /* 13px */
-  --text-base: 0.875rem;  /* 14px */
-  --text-md:   0.9375rem; /* 15px */
-  --text-lg:   1rem;      /* 16px */
-  --text-xl:   1.125rem;  /* 18px */
-  --text-2xl:  1.25rem;   /* 20px */
-  --text-3xl:  1.5rem;    /* 24px */
+  /*
+   * Type scale — 5 clear visual levels, not 8 similar ones.
+   *
+   * Level 1  caption  : 11px — footnotes, graph labels, eyebrow uppercase
+   * Level 2  secondary: 13px — meta, nav, filter, muted
+   * Level 3  body     : 15px — primary content, list item names
+   * Level 4  heading  : 22px — card titles, institution name in profile
+   * Level 5  display  : 32px — big stat numbers
+   *
+   * Nothing lives between 15 and 22 — that's the intentional gap.
+   */
+  --text-xs:   0.6875rem; /* 11px — caption / eyebrow only         */
+  --text-sm:   0.8125rem; /* 13px — secondary / nav / meta          */
+  --text-base: 0.9375rem; /* 15px — primary body, list names        */
+  --text-lg:   1rem;      /* 16px — slightly larger body when needed */
+  --text-xl:   1.1875rem; /* 19px — subsection titles               */
+  --text-2xl:  1.375rem;  /* 22px — card / section headings          */
+  --text-3xl:  2rem;      /* 32px — display numbers / stat values    */
+  --text-4xl:  2.5rem;    /* 40px — hero numbers (future use)        */
 
   /* Font weights */
   --w-normal:   400;
@@ -30,8 +40,8 @@
   --w-bold:     700;
 
   /* Line heights */
-  --leading-tight:   1.25;
-  --leading-snug:    1.4;
+  --leading-tight:   1.2;
+  --leading-snug:    1.35;
   --leading-normal:  1.5;
   --leading-relaxed: 1.7;
 
@@ -119,11 +129,12 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   background: var(--bg);
   color: var(--text-1);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  font-size: var(--text-base);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: var(--text-base); /* 15px base — Level 3 */
   line-height: var(--leading-normal);
   transition: background var(--transition), color var(--transition);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -154,12 +165,13 @@ a:hover { color: var(--accent-h); }
   transition: background var(--transition), border-color var(--transition);
 }
 
+/* Level 3 (15px) semibold — distinctly heavier than nav */
 .topbar-title {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: var(--w-semibold);
   color: var(--text-1);
   white-space: nowrap;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   flex-shrink: 0;
 }
 
@@ -176,6 +188,7 @@ a:hover { color: var(--accent-h); }
   gap: var(--sp-1);
 }
 
+/* Level 2 (13px) — clearly below the title */
 .nav-btn {
   padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-sm);
@@ -187,9 +200,10 @@ a:hover { color: var(--accent-h); }
   cursor: pointer;
   transition: background var(--transition), color var(--transition);
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 .nav-btn:hover  { background: var(--surface-2); color: var(--text-1); }
-.nav-btn.active { background: var(--accent-sub); color: var(--accent); }
+.nav-btn.active { background: var(--accent-sub); color: var(--accent); font-weight: var(--w-semibold); }
 
 .icon-btn {
   display: flex;
@@ -342,21 +356,25 @@ a:hover { color: var(--accent-h); }
 
 .inst-info { flex: 1; min-width: 0; }
 
+/* Level 3 (15px) semibold — primary content, clearly above meta */
 .inst-name {
   font-size: var(--text-base);
-  font-weight: var(--w-medium);
+  font-weight: var(--w-semibold);
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: var(--leading-snug);
+  letter-spacing: -0.01em;
 }
 
+/* Level 1 (11px) — clearly subordinate, 4px gap below name */
 .inst-meta {
   font-size: var(--text-xs);
   color: var(--text-3);
-  margin-top: 2px;
+  margin-top: var(--sp-1);
   line-height: var(--leading-normal);
+  letter-spacing: 0.01em;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -386,9 +404,11 @@ a:hover { color: var(--accent-h); }
   font-size: var(--text-xs);
 }
 
+/* Level 2 — label is secondary, value is primary within its row */
 .breakdown-label {
   width: 190px;
-  color: var(--text-2);
+  font-size: var(--text-sm);
+  color: var(--text-3);
   flex-shrink: 0;
   line-height: var(--leading-snug);
 }
@@ -405,19 +425,21 @@ a:hover { color: var(--accent-h); }
   height: 5px;
   border-radius: var(--r-full);
   background: var(--accent);
-  transition: width 0.4s ease;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Heavier than label — the number IS the point */
 .breakdown-val {
   width: 2.5rem;
   text-align: right;
+  font-size: var(--text-sm);
   color: var(--text-1);
-  font-weight: var(--w-medium);
+  font-weight: var(--w-semibold);
   font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 480px) {
-  .breakdown-label { width: 130px; font-size: 0.65rem; }
+  .breakdown-label { width: 120px; font-size: 0.6875rem; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -491,17 +513,19 @@ a:hover { color: var(--accent-h); }
 
 .gap-card-title {
   font-size: var(--text-xs);
-  font-weight: var(--w-medium);
+  font-weight: var(--w-semibold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   margin-bottom: var(--sp-2);
 }
 
+/* Level 4 (22px bold) — the verdict is the primary info on this card */
 .gap-card-status {
-  font-size: var(--text-md);
-  font-weight: var(--w-semibold);
-  line-height: var(--leading-snug);
+  font-size: var(--text-2xl);
+  font-weight: var(--w-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
 }
 
 .gap-strong { color: var(--green);  }
@@ -557,21 +581,43 @@ a:hover { color: var(--accent-h); }
   margin: var(--sp-4) 0;
 }
 
-/* Stat block */
+/* Stat block — Level 5 (32px) number, Level 1 eyebrow label */
 .stat { text-align: left; }
 .stat-value {
-  font-size: var(--text-3xl);
+  font-size: var(--text-3xl);   /* 32px — display number */
   font-weight: var(--w-bold);
   color: var(--text-1);
   line-height: var(--leading-tight);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
-  font-size: var(--text-xs);
+  font-size: var(--text-xs);    /* 11px — eyebrow, clearly subordinate */
+  font-weight: var(--w-medium);
   color: var(--text-3);
-  margin-top: 2px;
+  margin-top: var(--sp-1);
   line-height: var(--leading-normal);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Eyebrow utility — uppercase tracked caption */
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--w-semibold);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: var(--leading-normal);
+}
+
+/* Section heading — Level 4 */
+.section-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--w-semibold);
+  color: var(--text-1);
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
 }
 
 /* ═══════════════════════════════════════════════════════

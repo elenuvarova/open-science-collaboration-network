@@ -39,7 +39,7 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
         <div style={{ display: "flex", gap: "var(--sp-4)", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
           <ScoreRing score={inst.partner_fit_score} size={64} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: "var(--text-xl)", fontWeight: "var(--w-semibold)", letterSpacing: "-0.01em", lineHeight: "var(--leading-snug)", marginBottom: "var(--sp-2)" }}>
+            <h2 className="section-title" style={{ marginBottom: "var(--sp-2)" }}>
               {inst.name}
             </h2>
             <div style={{ display: "flex", gap: "var(--sp-2)", alignItems: "center", flexWrap: "wrap" }}>

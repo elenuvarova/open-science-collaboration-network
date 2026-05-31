@@ -63,7 +63,7 @@ export default function GapView({ topicId }) {
       </div>
 
       <div className="card" style={{ marginTop: "var(--sp-5)" }}>
-        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-3)" }}>
+        <p className="eyebrow" style={{ marginBottom: "var(--sp-3)" }}>
           Country coverage
         </p>
         <div>{countries.map((c) => <span className="tag" key={c}>{c}</span>)}</div>

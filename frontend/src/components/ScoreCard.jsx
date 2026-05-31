@@ -12,12 +12,10 @@ export default function ScoreCard({ score, breakdown = {} }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", marginBottom: "var(--sp-4)" }}>
-        <span className={`score-pill ${cls}`} style={{ fontSize: "var(--text-md)", padding: "var(--sp-1) var(--sp-3)" }}>
+        <span className={`score-pill ${cls}`} style={{ fontSize: "var(--text-base)", padding: "var(--sp-1) var(--sp-3)" }}>
           {score.toFixed(1)}
         </span>
-        <span style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", fontWeight: "var(--w-medium)" }}>
-          Partner Fit Score
-        </span>
+        <span className="eyebrow">Partner Fit Score</span>
       </div>
       <div className="breakdown">
         {Object.entries(LABELS).map(([key, label]) => {
