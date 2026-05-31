@@ -1,0 +1,103 @@
+from sqlalchemy import (
+    JSON,
+    Column,
+    Date,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.orm import relationship
+
+from db import Base
+
+
+class Topic(Base):
+    __tablename__ = "topic"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    keywords = Column(JSON, default=list)
+
+
+class Institution(Base):
+    __tablename__ = "institution"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    normalized_name = Column(String, index=True)
+    country = Column(String, index=True)
+    city = Column(String)
+    type = Column(String)  # university | company | ngo | public_body
+    openalex_id = Column(String, unique=True)
+    ror_id = Column(String)
+    cordis_pic = Column(String, nullable=True)
+    match_confidence = Column(Float, nullable=True)
+
+    metrics = relationship("InstitutionMetric", back_populates="institution")
+
+
+class Author(Base):
+    __tablename__ = "author"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    openalex_id = Column(String, unique=True)
+    orcid = Column(String, nullable=True)
+    institution_id = Column(Integer, ForeignKey("institution.id"))
+
+
+class Work(Base):
+    __tablename__ = "work"
+    id = Column(Integer, primary_key=True)
+    openalex_id = Column(String, unique=True)
+    title = Column(Text)
+    year = Column(Integer)
+    abstract = Column(Text, nullable=True)
+    doi = Column(String, nullable=True)
+    cited_by_count = Column(Integer, default=0)
+    topic_id = Column(Integer, ForeignKey("topic.id"))
+
+
+class Project(Base):
+    __tablename__ = "project"
+    id = Column(Integer, primary_key=True)
+    cordis_id = Column(String, unique=True)
+    title = Column(Text)
+    abstract = Column(Text, nullable=True)
+    programme = Column(String)  # HORIZON | H2020 | FP7
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    ec_contribution = Column(Float, nullable=True)
+    countries = Column(JSON, default=list)
+
+
+class ProjectParticipant(Base):
+    __tablename__ = "project_participant"
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("project.id"), index=True)
+    institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
+    role = Column(String)  # coordinator | participant
+
+
+class CollaborationEdge(Base):
+    __tablename__ = "collaboration_edge"
+    id = Column(Integer, primary_key=True)
+    source_institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
+    target_institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
+    type = Column(String)  # coauthor | project
+    weight = Column(Float, default=1.0)
+
+
+class InstitutionMetric(Base):
+    __tablename__ = "institution_metric"
+    id = Column(Integer, primary_key=True)
+    institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
+    topic_id = Column(Integer, ForeignKey("topic.id"), index=True)
+    degree_centrality = Column(Float, default=0.0)
+    betweenness = Column(Float, default=0.0)
+    community_id = Column(Integer, nullable=True)
+    partner_fit_score = Column(Float, default=0.0)
+    score_breakdown = Column(JSON, default=dict)
+    recent_works = Column(Integer, default=0)
+    eu_projects = Column(Integer, default=0)
+
+    institution = relationship("Institution", back_populates="metrics")

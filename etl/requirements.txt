@@ -1,0 +1,10 @@
+pyalex==0.18
+requests==2.32.3
+pandas==2.2.3
+networkx==3.4.2
+python-louvain==0.16
+rapidfuzz==3.10.1
+SQLAlchemy==2.0.36
+psycopg[binary]==3.3.4
+python-dotenv==1.0.1
+# v2 (RAG): sentence-transformers, pgvector

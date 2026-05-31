@@ -1,0 +1,17 @@
+# FastAPI web service. DATABASE_URL points at an external Neon Postgres
+# (free, never expires, pgvector) — set it as a secret in the Render dashboard,
+# NOT here. The ETL runs in GitHub Actions, not on Render.
+services:
+  - type: web
+    name: ai-workshop-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        sync: false # set in dashboard from your Neon connection string
