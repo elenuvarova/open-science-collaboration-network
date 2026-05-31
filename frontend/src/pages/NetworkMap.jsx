@@ -16,9 +16,7 @@ export default function NetworkMap({ topicId }) {
     setSelected(null);
     const params = { topic: topicId, limit };
     if (type) params.type = type;
-    getGraph(params)
-      .then(setGraph)
-      .finally(() => setLoading(false));
+    getGraph(params).then(setGraph).finally(() => setLoading(false));
   }, [topicId, limit, type]);
 
   return (
@@ -29,44 +27,42 @@ export default function NetworkMap({ topicId }) {
           : <GraphCanvas
               nodes={graph.nodes}
               edges={graph.edges}
-              onNodeClick={(data) => setSelected(data.id)}
+              onNodeClick={(data) => setSelected(Number(data.id))}
             />
         }
       </div>
 
       <div className="graph-sidebar">
-        <div className="card" style={{ marginBottom: "0.75rem" }}>
-          <div className="filter-bar" style={{ marginBottom: 0, flexDirection: "column", alignItems: "stretch" }}>
-            <select value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
+        <div className="card">
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)", marginBottom: "var(--sp-3)" }}>
+            <select className="filter-select" value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
               <option value={50}>Top 50 nodes</option>
               <option value={80}>Top 80 nodes</option>
               <option value={150}>Top 150 nodes</option>
             </select>
-            <select value={type} onChange={(e) => setType(e.target.value)}>
+            <select className="filter-select" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="">All types</option>
               <option value="university">Universities</option>
               <option value="company">Companies</option>
               <option value="public_body">Public bodies</option>
             </select>
           </div>
-          <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.78rem" }}>
+          <p className="muted" style={{ fontSize: "var(--text-xs)", lineHeight: "var(--leading-relaxed)" }}>
             {graph.nodes.length} nodes · {graph.edges.length} edges<br />
-            Node size = centrality · Color = cluster
+            Size = centrality · Color = cluster
           </p>
         </div>
 
-        {selected && (
-          <InstitutionProfile
-            id={Number(selected)}
-            topicId={topicId}
-            onBack={() => setSelected(null)}
-          />
-        )}
-        {!selected && (
-          <div className="card">
-            <p className="muted" style={{ fontSize: "0.82rem" }}>Click a node to see the institution profile and Partner Fit Score.</p>
-          </div>
-        )}
+        {selected
+          ? <InstitutionProfile id={selected} topicId={topicId} onBack={() => setSelected(null)} />
+          : (
+            <div className="card">
+              <p className="muted" style={{ fontSize: "var(--text-xs)", lineHeight: "var(--leading-relaxed)" }}>
+                Click a node to see the institution profile and Partner Fit Score breakdown.
+              </p>
+            </div>
+          )
+        }
       </div>
     </div>
   );

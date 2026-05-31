@@ -17,38 +17,43 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
   }, [id, topicId]);
 
   if (loading) return <div className="spinner">Loading…</div>;
-  if (error) return <div className="muted">Error: {error.message}</div>;
-  if (!inst) return <div className="muted">Not found</div>;
+  if (error)   return <div className="muted">Error: {error.message}</div>;
+  if (!inst)   return <div className="muted">Not found</div>;
 
   return (
     <div>
-      <button className="back-btn" onClick={onBack}>← Back to shortlist</button>
+      {onBack && <button className="back-btn" onClick={onBack}>← Back to shortlist</button>}
       <div className="card">
-        <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>{inst.name}</h2>
-        <div className="inst-meta" style={{ marginBottom: "1.25rem" }}>
-          {inst.country} · {(inst.type || "unknown").replace("_", " ")}
+        <h2 style={{ fontSize: "var(--text-xl)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-1)", letterSpacing: "-0.01em" }}>
+          {inst.name}
+        </h2>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", marginBottom: "var(--sp-5)" }}>
+          {[inst.country, inst.type?.replace("_", " ")].filter(Boolean).join(" · ")}
           {inst.ror_id && (
-            <> · <a href={inst.ror_id} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>ROR ↗</a></>
+            <> · <a href={inst.ror_id} target="_blank" rel="noreferrer">ROR ↗</a></>
+          )}
+        </p>
+
+        <div style={{ display: "flex", gap: "var(--sp-6)", marginBottom: "var(--sp-5)", flexWrap: "wrap" }}>
+          <div className="stat">
+            <div className="stat-value">{inst.recent_works}</div>
+            <div className="stat-label">publications 2020–25</div>
+          </div>
+          <div className="stat">
+            <div className="stat-value">{inst.eu_projects}</div>
+            <div className="stat-label">EU projects</div>
+          </div>
+          {inst.community_id != null && (
+            <div className="stat">
+              <div className="stat-value">#{inst.community_id}</div>
+              <div className="stat-label">cluster</div>
+            </div>
           )}
         </div>
 
-        <div style={{ display: "flex", gap: "2rem", marginBottom: "1.5rem" }}>
-          <Stat value={inst.recent_works} label="publications (2020–25)" />
-          <Stat value={inst.eu_projects} label="EU projects" />
-          {inst.community_id != null && <Stat value={`#${inst.community_id}`} label="cluster" />}
-        </div>
-
+        <div className="divider" />
         <ScoreCard score={inst.partner_fit_score} breakdown={inst.score_breakdown} />
       </div>
-    </div>
-  );
-}
-
-function Stat({ value, label }) {
-  return (
-    <div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 700 }}>{value}</div>
-      <div className="muted">{label}</div>
     </div>
   );
 }

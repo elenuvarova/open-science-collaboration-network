@@ -4,6 +4,7 @@ import NetworkMap from "./pages/NetworkMap";
 import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
 import Tour from "./components/Tour";
+import ThemeToggle from "./components/ThemeToggle";
 
 const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
@@ -11,11 +12,24 @@ const PAGES = [
   { id: "gaps",      label: "Consortium Gaps" },
 ];
 
+function useTheme() {
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "dark"
+  );
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+  const toggle = () => setTheme(t => t === "dark" ? "light" : "dark");
+  return [theme, toggle];
+}
+
 export default function App() {
   const [topics, setTopics] = useState([]);
   const [topicId, setTopicId] = useState(null);
   const [page, setPage] = useState("shortlist");
   const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
+  const [theme, toggleTheme] = useTheme();
 
   useEffect(() => {
     getTopics().then((t) => {
@@ -24,28 +38,15 @@ export default function App() {
     });
   }, []);
 
-  const topic = topics.find((t) => t.id === topicId);
+  const isWide = page === "network";
 
   return (
     <div className="layout">
       {showTour && <Tour onClose={() => setShowTour(false)} />}
+
       <header className="topbar">
         <span className="topbar-title">Open Science Collaboration Network</span>
-        <button
-          onClick={() => setShowTour(true)}
-          title="How it works"
-          style={{ marginLeft: "auto", background: "none", border: "1px solid var(--border)", color: "var(--muted)", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: "0.8rem", flexShrink: 0 }}
-        >?</button>
-        {topics.length > 1 && (
-          <select
-            value={topicId ?? ""}
-            onChange={(e) => setTopicId(Number(e.target.value))}
-            style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, padding: "0.3rem 0.6rem", fontSize: "0.82rem" }}
-          >
-            {topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        )}
-        {topic && <span className="muted" style={{ fontSize: "0.8rem" }}>{topic.name}</span>}
+
         <nav>
           {PAGES.map((p) => (
             <button
@@ -57,10 +58,31 @@ export default function App() {
             </button>
           ))}
         </nav>
+
+        <div className="topbar-actions">
+          {topics.length > 0 && (
+            <select
+              className="topic-select"
+              value={topicId ?? ""}
+              onChange={(e) => setTopicId(Number(e.target.value))}
+            >
+              {topics.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          )}
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <button
+            className="icon-btn"
+            onClick={() => setShowTour(true)}
+            title="How it works"
+            aria-label="Open tour"
+          >?</button>
+        </div>
       </header>
 
-      <main className={page === "network" ? "page" : "page"} style={page === "network" ? { padding: "0.75rem", maxWidth: "100%" } : {}}>
-        {!topicId && <div className="spinner">Loading…</div>}
+      <main className={isWide ? "page-wide" : "page"}>
+        {!topicId && <div className="spinner">Loading topics…</div>}
         {topicId && page === "shortlist" && <Shortlist topicId={topicId} />}
         {topicId && page === "network"   && <NetworkMap topicId={topicId} />}
         {topicId && page === "gaps"      && <GapView topicId={topicId} />}

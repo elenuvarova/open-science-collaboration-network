@@ -28,23 +28,17 @@ export default function Shortlist({ topicId }) {
   }, [topicId, country, type]);
 
   if (selected) {
-    return (
-      <InstitutionProfile
-        id={selected}
-        topicId={topicId}
-        onBack={() => setSelected(null)}
-      />
-    );
+    return <InstitutionProfile id={selected} topicId={topicId} onBack={() => setSelected(null)} />;
   }
 
   return (
     <div>
       <div className="filter-bar">
-        <select value={country} onChange={(e) => setCountry(e.target.value)}>
+        <select className="filter-select" value={country} onChange={(e) => setCountry(e.target.value)}>
           <option value="">All countries</option>
           {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
         </select>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
+        <select className="filter-select" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">All types</option>
           {TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
         </select>
@@ -58,7 +52,7 @@ export default function Shortlist({ topicId }) {
           <div className="inst-info">
             <div className="inst-name">{inst.name}</div>
             <div className="inst-meta">
-              {inst.country} · {(inst.type || "unknown").replace("_", " ")} · {inst.recent_works} works · {inst.eu_projects} EU projects
+              {[inst.country, inst.type?.replace("_", " "), `${inst.recent_works} works`, `${inst.eu_projects} EU projects`].filter(Boolean).join(" · ")}
             </div>
           </div>
           <span className={`score-pill ${scoreClass(inst.partner_fit_score)}`}>
