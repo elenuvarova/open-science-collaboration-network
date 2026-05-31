@@ -1,38 +1,22 @@
-"""Seed configuration for the ETL pipeline.
+"""ETL configuration.
 
-Scoping the OpenAlex pull tightly (one topic + Europe + recent years) keeps the
-run inside OpenAlex's free $1/day allowance. Widen only via the CC0 snapshot.
+Each topic in TOPICS will be ingested as a separate graph in the DB.
+Run:
+  python run.py                          # all topics
+  python run.py "AI in education"        # one topic
 """
 
-# --- Seed topic (chosen from OpenAlex density probe; see PLAN.md §0) ---
-TOPIC_NAME = "Climate adaptation"
-TOPIC_SEARCH = "climate adaptation"
-TOPIC_KEYWORDS = [
-    "climate adaptation",
-    "climate resilience",
-    "urban heat",
-    "flood risk",
-    "drought",
-    "coastal adaptation",
-]
-
-# --- Geographic + temporal scope ---
-CONTINENT = "europe"  # OpenAlex: institutions.continent
-FOCUS_COUNTRIES = ["BE", "GB", "NL", "FR", "DE"]  # highlight, not exclude
+CONTINENT = "europe"
+FOCUS_COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"]
 YEAR_FROM = 2020
 YEAR_TO = 2025
+MAX_WORKS = 5000
 
-# --- Caps (keep the graph legible + within free tiers) ---
-MAX_WORKS = 5000          # top works by relevance/citations
-TOP_N_INSTITUTIONS = 300  # graph node cap for the MVP (Cytoscape comfort zone)
-
-# --- CORDIS bulk datasets (data.europa.eu) ---
 CORDIS_DATASETS = {
     "HORIZON": "https://cordis.europa.eu/data/cordis-HORIZONprojects-csv.zip",
     "H2020": "https://cordis.europa.eu/data/cordis-h2020projects-csv.zip",
 }
 
-# --- Partner Fit Score weights (PLAN.md §5 / spec §5.2) ---
 SCORE_WEIGHTS = {
     "topic_relevance": 0.30,
     "publication_activity": 0.20,
@@ -41,3 +25,45 @@ SCORE_WEIGHTS = {
     "country_diversity": 0.10,
     "recent_activity": 0.05,
 }
+
+TOPICS = [
+    {
+        "name": "Climate adaptation",
+        "search": "climate adaptation",
+        "keywords": ["climate adaptation", "climate resilience", "urban heat",
+                     "flood risk", "drought", "coastal adaptation"],
+        "cordis_keywords": ["climate adapt", "climate resilien", "flood", "drought",
+                            "heat wave", "coastal adapt", "urban heat", "sea level",
+                            "extreme weather"],
+    },
+    {
+        "name": "AI in education",
+        "search": "artificial intelligence education",
+        "keywords": ["AI in education", "learning analytics", "adaptive learning",
+                     "AI tutoring", "educational technology", "intelligent tutoring"],
+        "cordis_keywords": ["artificial intelligence", "machine learning", "adaptive learning",
+                            "learning analytics", "educational technolog", "ai tutor",
+                            "personali", "digital education"],
+    },
+    {
+        "name": "Soil health",
+        "search": "soil health",
+        "keywords": ["soil health", "soil microbiome", "soil carbon",
+                     "regenerative agriculture", "soil biodiversity", "soil quality"],
+        "cordis_keywords": ["soil health", "soil microbiom", "soil carbon", "soil qualit",
+                            "soil biodiversit", "regenerative agri", "soil organic"],
+    },
+    {
+        "name": "Circular economy",
+        "search": "circular economy",
+        "keywords": ["circular economy", "waste reduction", "recycling", "closed-loop",
+                     "sustainable production", "industrial symbiosis"],
+        "cordis_keywords": ["circular econom", "recycl", "waste reduction", "closed-loop",
+                            "industrial symbios", "sustainable production"],
+    },
+]
+
+# Active topic for single-topic runs (overridden by run.py args)
+TOPIC_NAME = TOPICS[0]["name"]
+TOPIC_SEARCH = TOPICS[0]["search"]
+TOPIC_KEYWORDS = TOPICS[0]["keywords"]
