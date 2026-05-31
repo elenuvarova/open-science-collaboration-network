@@ -9,6 +9,11 @@ import EmptyState from "../components/EmptyState";
 const COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"];
 const TYPES = ["university", "company", "ngo", "public_body"];
 
+function fmt(n) {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
+  return String(n);
+}
+
 function scoreClass(s) {
   return s >= 70 ? "score-high" : s >= 50 ? "score-mid" : "score-low";
 }
@@ -162,7 +167,7 @@ export default function Shortlist({ topicId }) {
               <TypeBadge type={inst.type} />
               <span>{inst.country}</span>
               <span>·</span>
-              <span>{inst.recent_works} works</span>
+              <span>{fmt(inst.recent_works)} works</span>
               {inst.eu_projects > 0 && <><span>·</span><span>{inst.eu_projects} EU projects</span></>}
             </div>
           </div>

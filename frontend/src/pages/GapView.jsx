@@ -25,7 +25,19 @@ export default function GapView({ topicId }) {
     getInstitutions({ topic: topicId, limit: 200 }).then(setInstitutions).finally(() => setLoading(false));
   }, [topicId]);
 
-  if (loading) return <div className="spinner">Loading…</div>;
+  if (loading) return (
+    <div>
+      <div className="gap-grid">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div className="gap-card" key={i}>
+            <div className="skel" style={{ height: 10, width: "60%", marginBottom: "var(--sp-3)" }} />
+            <div className="skel" style={{ height: 28, width: "80%", marginBottom: "var(--sp-2)" }} />
+            <div className="skel" style={{ height: 10, width: "40%" }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const byType = {};
   for (const inst of institutions) {
