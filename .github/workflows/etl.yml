@@ -31,6 +31,11 @@ jobs:
         with:
           path: ~/.cache/fastembed
           key: fastembed-models-v1
+      - name: Cache CORDIS ZIPs
+        uses: actions/cache@v4
+        with:
+          path: etl/.cache
+          key: cordis-zips-v1
       - name: Install ETL deps
         run: pip install -r etl/requirements.txt
       - name: Run ETL — ${{ matrix.topic }}

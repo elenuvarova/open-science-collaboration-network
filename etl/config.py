@@ -10,7 +10,7 @@ CONTINENT = "europe"
 FOCUS_COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"]
 YEAR_FROM = 2020
 YEAR_TO = 2025
-MAX_WORKS = 5000
+MAX_WORKS = 1000
 
 CORDIS_DATASETS = {
     "HORIZON": "https://cordis.europa.eu/data/cordis-HORIZONprojects-csv.zip",
