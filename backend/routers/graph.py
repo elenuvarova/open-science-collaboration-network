@@ -44,6 +44,8 @@ def get_graph(
         CollaborationEdge.source_institution_id.in_(node_ids),
         CollaborationEdge.target_institution_id.in_(node_ids),
     )
+    if topic is not None:
+        edges_q = edges_q.filter(CollaborationEdge.topic_id == topic)
     edges = [
         GraphEdge(
             source=e.source_institution_id,

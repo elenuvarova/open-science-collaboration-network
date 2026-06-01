@@ -161,16 +161,16 @@ def run_topic(topic_cfg: dict):
                 eu_projects=pc,
             )
 
-        # ── 6. Collaboration edges (per-topic, append) ────────────────────────
+        # ── 6. Collaboration edges (per-topic) ────────────────────────────────
         print("Step 6/6  Writing edges…")
-        # Delete edges only for institutions active in this topic's graph
-        node_ids = set(G.nodes)
-        if node_ids:
-            db.query(CollaborationEdge).filter(
-                CollaborationEdge.source_institution_id.in_(node_ids)
-            ).delete(synchronize_session=False)
+        # Edges are topic-scoped: clear only THIS topic's edges, never other
+        # topics' — institutions are shared across topics, so deleting by node
+        # would clobber edges that belong to a different topic's graph.
+        db.query(CollaborationEdge).filter(
+            CollaborationEdge.topic_id == topic.id
+        ).delete(synchronize_session=False)
         for src, tgt, data in G.edges(data=True):
-            load.add_edge(db, src, tgt, data.get("type", "coauthor"), data.get("weight", 1.0))
+            load.add_edge(db, src, tgt, topic.id, data.get("type", "coauthor"), data.get("weight", 1.0))
 
         db.commit()
         print(f"  Done — {len(oa_inst_id_map)} institutions, {len(G.edges)} edges")

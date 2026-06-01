@@ -5,6 +5,7 @@ filters to climate-related projects by EuroSciVoc / topic keywords.
 """
 import io
 import os
+import re
 import zipfile
 
 import pandas as pd
@@ -48,16 +49,6 @@ def _read_csv_from_zip(data: bytes, filename: str) -> pd.DataFrame:
                 f, sep=";", encoding="utf-8-sig",
                 low_memory=False, on_bad_lines="skip",
             )
-
-
-def _is_climate_related(row) -> bool:
-    text = " ".join([
-        str(row.get("objective", "") or ""),
-        str(row.get("title", "") or ""),
-        str(row.get("topics", "") or ""),
-        str(row.get("euroSciVoc", "") or ""),
-    ]).lower()
-    return any(kw in text for kw in CLIMATE_KEYWORDS)
 
 
 def fetch_projects():
@@ -114,7 +105,9 @@ def fetch_projects():
             _col(projects, "topics") + " " +
             _col(projects, "euroscivoc")
         )
-        pattern = "|".join(CLIMATE_KEYWORDS)
+        # Escape keywords — they're literal substrings, not regex (a stray "+" or
+        # "(" in a future keyword would otherwise break or silently mis-filter).
+        pattern = "|".join(re.escape(kw) for kw in CLIMATE_KEYWORDS)
         climate = projects[text_series.str.contains(pattern, na=False, regex=True)].copy()
         print(f"  cordis: {label} — {len(climate)} climate-related projects (of {len(projects)})")
 

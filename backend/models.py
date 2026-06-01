@@ -83,6 +83,7 @@ class CollaborationEdge(Base):
     id = Column(Integer, primary_key=True)
     source_institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
     target_institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
+    topic_id = Column(Integer, ForeignKey("topic.id"), index=True)
     type = Column(String)  # coauthor | project
     weight = Column(Float, default=1.0)
 

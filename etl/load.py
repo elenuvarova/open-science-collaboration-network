@@ -88,11 +88,12 @@ def upsert_project_participant(db, project_id, institution_id, role):
     return pp
 
 
-def add_edge(db, source_id, target_id, type_, weight=1.0):
+def add_edge(db, source_id, target_id, topic_id, type_, weight=1.0):
     db.add(
         models.CollaborationEdge(
             source_institution_id=source_id,
             target_institution_id=target_id,
+            topic_id=topic_id,
             type=type_,
             weight=weight,
         )

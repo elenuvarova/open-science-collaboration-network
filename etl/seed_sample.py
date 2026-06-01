@@ -51,7 +51,7 @@ def main():
                 eu_projects=projects, recent_works=works,
             )
         for a, b in EDGES:
-            load.add_edge(db, ids[a], ids[b], "coauthor", 1.0)
+            load.add_edge(db, ids[a], ids[b], topic.id, "coauthor", 1.0)
         db.commit()
         print(f"Seeded topic + {len(ids)} institutions + {len(EDGES)} edges.")
     finally:
