@@ -45,9 +45,11 @@ export default function NetworkMap({ topicId }) {
             </select>
             <select className="filter-select" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="">All types</option>
-              <option value="university">Universities</option>
+              <option value="education">Education</option>
               <option value="company">Companies</option>
-              <option value="public_body">Public bodies</option>
+              <option value="government">Government</option>
+              <option value="nonprofit">NGO / nonprofit</option>
+              <option value="healthcare">Healthcare</option>
             </select>
           </div>
           <p style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)" }}>

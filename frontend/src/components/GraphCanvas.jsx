@@ -111,27 +111,57 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       selector: "edge:selected",
       style: { opacity: 1, width: 2, "line-color": "var(--accent)" },
     },
+    {
+      selector: ".dimmed",
+      style: { opacity: 0.08 },
+    },
+    {
+      selector: "node.hovered",
+      style: {
+        "background-opacity": 1,
+        "border-width": 2,
+        "border-color": "#ffffff55",
+        "font-size": 10,
+        opacity: 1,
+      },
+    },
   ];
 
   const layout = {
     name: "fcose",
-    quality: "proof",
+    quality: "default",
     randomize: true,
-    animate: false,
-    idealEdgeLength: 55,
-    nodeRepulsion: 5000,
+    animate: true,
+    animationDuration: 900,
+    animationEasing: "ease-out",
+    idealEdgeLength: 90,
+    nodeRepulsion: 12000,
+    gravity: 0.2,
+    gravityRange: 3.8,
     numIter: 2500,
     tile: true,
-    tilingPaddingVertical: 10,
-    tilingPaddingHorizontal: 10,
+    tilingPaddingVertical: 20,
+    tilingPaddingHorizontal: 20,
   };
 
   useEffect(() => {
     if (!cyRef.current || !onNodeClick) return;
     const cy = cyRef.current;
     cy.removeAllListeners();
+
     cy.on("tap", "node", (e) => onNodeClick(e.target.data()));
     cy.on("tap", (e) => { if (e.target === cy) onNodeClick(null); });
+
+    // Hover: highlight neighbours, fade the rest
+    cy.on("mouseover", "node", (e) => {
+      const node = e.target;
+      const neighbours = node.closedNeighborhood();
+      cy.elements().not(neighbours).addClass("dimmed");
+      node.addClass("hovered");
+    });
+    cy.on("mouseout", "node", () => {
+      cy.elements().removeClass("dimmed hovered");
+    });
   }, [ready, onNodeClick]);
 
   if (!nodes.length) {
