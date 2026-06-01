@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CytoscapeComponent from "react-cytoscapejs";
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
+import cola from "cytoscape-cola";
 import GraphLegend from "./GraphLegend";
 import GraphControls from "./GraphControls";
 
 cytoscape.use(fcose);
+cytoscape.use(cola);
 
 const COMMUNITY_COLORS = [
   "#4f8ef7", "#4ade80", "#fbbf24", "#f87171", "#a78bfa",
@@ -135,43 +137,63 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     },
   ];
 
-  const layout = {
-    name: "fcose",
-    quality: "proof",
-    randomize: true,
-    animate: true,
-    animationDuration: 1100,
-    animationEasing: "ease-out",
-    idealEdgeLength: 160,
-    nodeRepulsion: 65000,
-    nodeSeparation: 80,
-    gravity: 0.15,
-    gravityRange: 3.8,
-    numIter: 3000,
-    tile: true,
-    tilingPaddingVertical: 30,
-    tilingPaddingHorizontal: 30,
-  };
+  // CytoscapeComponent runs its `layout` prop on every render; keep it a no-op
+  // "preset" so positions are never re-frozen. The real layout is the live cola
+  // force simulation started imperatively below.
+  const layout = useMemo(() => ({ name: "preset" }), []);
 
+  // Keep the latest onNodeClick without re-registering listeners every render.
+  const onNodeClickRef = useRef(onNodeClick);
+  useEffect(() => { onNodeClickRef.current = onNodeClick; }, [onNodeClick]);
+
+  // Live force simulation — runs continuously so nodes are draggable and their
+  // neighbours respond to dragging, instead of a frozen one-shot layout. Node
+  // counts are capped (≤150) so it stays light. Restarted on data change,
+  // stopped on unmount.
   useEffect(() => {
-    if (!cyRef.current || !onNodeClick) return;
     const cy = cyRef.current;
-    cy.removeAllListeners();
+    if (!cy || !ready || !nodes.length) return;
+    const sim = cy.layout({
+      name: "cola",
+      infinite: true,
+      fit: false,
+      centerGraph: true,
+      animate: true,
+      randomize: true,
+      avoidOverlap: true,
+      handleDisconnected: true,
+      nodeSpacing: 8,
+      edgeLength: 100,
+    });
+    sim.run();
+    const fitT = setTimeout(() => cyRef.current?.fit(undefined, 30), 700);
+    return () => { clearTimeout(fitT); sim.stop(); };
+  }, [ready, nodes, edges]);
 
-    cy.on("tap", "node", (e) => onNodeClick(e.target.data()));
-    cy.on("tap", (e) => { if (e.target === cy) onNodeClick(null); });
-
-    // Hover: highlight neighbours, fade the rest
-    cy.on("mouseover", "node", (e) => {
+  // Interaction: tap to select, hover to highlight neighbours. Registered once
+  // (no removeAllListeners — that would also strip cola's drag listeners).
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !ready) return;
+    const tapNode = (e) => onNodeClickRef.current?.(e.target.data());
+    const tapBg = (e) => { if (e.target === cy) onNodeClickRef.current?.(null); };
+    const over = (e) => {
       const node = e.target;
-      const neighbours = node.closedNeighborhood();
-      cy.elements().not(neighbours).addClass("dimmed");
+      cy.elements().not(node.closedNeighborhood()).addClass("dimmed");
       node.addClass("hovered");
-    });
-    cy.on("mouseout", "node", () => {
-      cy.elements().removeClass("dimmed hovered");
-    });
-  }, [ready, onNodeClick]);
+    };
+    const out = () => cy.elements().removeClass("dimmed hovered");
+    cy.on("tap", "node", tapNode);
+    cy.on("tap", tapBg);
+    cy.on("mouseover", "node", over);
+    cy.on("mouseout", "node", out);
+    return () => {
+      cy.off("tap", "node", tapNode);
+      cy.off("tap", tapBg);
+      cy.off("mouseover", "node", over);
+      cy.off("mouseout", "node", out);
+    };
+  }, [ready]);
 
   if (!nodes.length) {
     return (

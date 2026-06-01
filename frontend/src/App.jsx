@@ -74,22 +74,29 @@ export default function App() {
 
         <div className="topbar-actions">
           {topics.length > 0 && (
-            <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-              <select
-                className="topic-select"
-                value={topicId ?? ""}
-                onChange={(e) => setTopicId(Number(e.target.value))}
-                style={{ paddingRight: "var(--sp-6)", appearance: "none", WebkitAppearance: "none" }}
-              >
-                {topics.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "var(--sp-2)" }}>
               <span style={{
-                position: "absolute", right: "var(--sp-2)", pointerEvents: "none",
-                color: "var(--text-3)", fontSize: "0.6rem", lineHeight: 1,
-              }}>▾</span>
-            </div>
+                fontSize: "var(--text-xs)", color: "var(--text-3)",
+                fontWeight: "var(--w-medium)", textTransform: "uppercase",
+                letterSpacing: "0.04em", whiteSpace: "nowrap",
+              }}>Topic</span>
+              <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                <select
+                  className="topic-select"
+                  value={topicId ?? ""}
+                  onChange={(e) => setTopicId(Number(e.target.value))}
+                  style={{ paddingRight: "var(--sp-6)", appearance: "none", WebkitAppearance: "none" }}
+                >
+                  {topics.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <span style={{
+                  position: "absolute", right: "var(--sp-2)", pointerEvents: "none",
+                  color: "var(--text-3)", fontSize: "0.85rem", lineHeight: 1,
+                }}>▾</span>
+              </span>
+            </label>
           )}
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <button

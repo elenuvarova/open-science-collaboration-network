@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "cytoscape": "^3.33.4",
+    "cytoscape-cola": "^2.5.1",
     "cytoscape-fcose": "^2.2.0",
     "react": "^18.2.0",
     "react-cytoscapejs": "^2.0.0",
