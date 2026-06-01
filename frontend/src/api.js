@@ -11,3 +11,5 @@ export const getInstitutions = (params = {}) => get("/institutions?" + new URLSe
 export const getInstitution = (id, topic) => get(`/institutions/${id}` + (topic ? `?topic=${topic}` : ""));
 export const getGraph = (params = {}) => get("/graph?" + new URLSearchParams(params));
 export const getBrief = (topicId) => get(`/brief?topic=${topicId}`);
+export const searchWorks = (q, topicId, limit = 10) =>
+  get(`/search?q=${encodeURIComponent(q)}&topic=${topicId}&limit=${limit}`);

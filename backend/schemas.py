@@ -56,3 +56,13 @@ class BriefOut(BaseModel):
     text: str
     generated_at: Optional[str] = None
     model: Optional[str] = None
+
+
+class WorkSearchResult(BaseModel):
+    id: int
+    title: str
+    year: Optional[int] = None
+    doi: Optional[str] = None
+    cited_by_count: int = 0
+    abstract_snippet: str = ""
+    similarity: float = 0.0
