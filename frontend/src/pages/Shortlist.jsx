@@ -146,6 +146,27 @@ export default function Shortlist({ topicId }) {
           <option value={80}>Score 80+</option>
         </select>
         {!loading && <span className="muted">{list.length} institutions</span>}
+        {!loading && list.length > 0 && (
+          <button
+            className="filter-select"
+            style={{ cursor: "pointer" }}
+            onClick={() => {
+              const header = "Rank,Name,Country,Type,Score,EU Projects,Works";
+              const rows = list.slice(0, 50).map((inst, i) =>
+                [i + 1, `"${inst.name.replace(/"/g, '""')}"`, inst.country || "", inst.type || "",
+                 inst.partner_fit_score.toFixed(0), inst.eu_projects, inst.recent_works].join(",")
+              );
+              const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "partners.csv";
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }}
+          >
+            Export CSV
+          </button>
+        )}
       </div>
 
       {loading && <SkeletonList rows={10} />}
