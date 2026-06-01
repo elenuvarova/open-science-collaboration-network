@@ -29,6 +29,9 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     }])
   ).values()].slice(0, 8);
 
+  // Limit to strongest edges so the layout isn't pulled into a hairball
+  const topEdges = [...edges].sort((a, b) => b.weight - a.weight).slice(0, 280);
+
   const elements = [
     ...nodes.map((n) => ({
       data: {
@@ -38,10 +41,10 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         community: n.community_id ?? 0,
         centrality: n.centrality ?? 0,
         color: nodeColor(n.community_id),
-        size: Math.max(18, Math.min(58, 18 + (n.centrality ?? 0) * 110)),
+        size: Math.max(14, Math.min(38, 14 + (n.centrality ?? 0) * 80)),
       },
     })),
-    ...edges.map((e, i) => ({
+    ...topEdges.map((e, i) => ({
       data: {
         id: `e${i}`,
         source: String(e.source),
@@ -60,21 +63,26 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         width: "data(size)",
         height: "data(size)",
         "background-color": "data(color)",
-        "background-opacity": 0.9,
+        "background-opacity": 0.88,
         color: "#f1f5f9",
-        "font-size": 9,
+        "font-size": 8,
         "text-valign": "bottom",
-        "text-margin-y": 5,
-        "text-max-width": 110,
+        "text-margin-y": 4,
+        "text-max-width": 90,
         "text-wrap": "ellipsis",
         "border-width": 0,
         "text-background-color": "#0f1117",
-        "text-background-opacity": 0.55,
+        "text-background-opacity": 0.6,
         "text-background-padding": "2px",
         "text-background-shape": "round-rectangle",
-        "transition-property": "background-opacity, border-width",
-        "transition-duration": "150ms",
+        "transition-property": "background-opacity, border-width, opacity",
+        "transition-duration": "180ms",
+        "min-zoomed-font-size": 6,
       },
+    },
+    {
+      selector: "node[size < 20]",
+      style: { label: "" },
     },
     {
       selector: "node:selected",
@@ -129,19 +137,20 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
 
   const layout = {
     name: "fcose",
-    quality: "default",
+    quality: "proof",
     randomize: true,
     animate: true,
-    animationDuration: 900,
+    animationDuration: 1100,
     animationEasing: "ease-out",
-    idealEdgeLength: 90,
-    nodeRepulsion: 12000,
-    gravity: 0.2,
+    idealEdgeLength: 160,
+    nodeRepulsion: 65000,
+    nodeSeparation: 80,
+    gravity: 0.15,
     gravityRange: 3.8,
-    numIter: 2500,
+    numIter: 3000,
     tile: true,
-    tilingPaddingVertical: 20,
-    tilingPaddingHorizontal: 20,
+    tilingPaddingVertical: 30,
+    tilingPaddingHorizontal: 30,
   };
 
   useEffect(() => {
