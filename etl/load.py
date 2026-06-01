@@ -125,7 +125,8 @@ def add_edge(db, source_id, target_id, topic_id, type_, weight=1.0):
 
 _INST_COLS = ("name", "normalized_name", "country", "type", "ror_id")
 _PROJ_COLS = ("title", "abstract", "programme", "countries")
-_WORK_COLS = ("title", "year", "abstract", "doi", "cited_by_count", "topic_id")
+# Columns updated on conflict — excludes the (openalex_id, topic_id) conflict key.
+_WORK_SET_COLS = ("title", "year", "abstract", "doi", "cited_by_count")
 
 
 def bulk_upsert_institutions(db, rows):
@@ -167,9 +168,11 @@ def bulk_upsert_projects(db, rows):
 
 
 def bulk_upsert_works(db, rows):
-    """rows: dicts with openalex_id + _WORK_COLS. Returns {openalex_id: id}.
-    rows must be unique on openalex_id. Stored so embeddings + semantic search
-    have content (a work belongs to one topic via topic_id)."""
+    """rows: dicts with openalex_id, topic_id + the _WORK_SET_COLS. Returns
+    {openalex_id: id}. Stored so embeddings + semantic search have content.
+    Conflict key is (openalex_id, topic_id) — a work shared by several topics
+    keeps a row per topic. rows must be unique on that pair (one topic per call,
+    deduped openalex_id, so they are)."""
     if not rows:
         return {}
     ins = _dialect_insert()
@@ -177,8 +180,8 @@ def bulk_upsert_works(db, rows):
     for chunk in _chunks(rows, 500):
         stmt = ins(models.Work).values(chunk)
         stmt = stmt.on_conflict_do_update(
-            index_elements=["openalex_id"],
-            set_={c: getattr(stmt.excluded, c) for c in _WORK_COLS},
+            index_elements=["openalex_id", "topic_id"],
+            set_={c: getattr(stmt.excluded, c) for c in _WORK_SET_COLS},
         ).returning(models.Work.id, models.Work.openalex_id)
         for wid, oa in db.execute(stmt).all():
             id_map[oa] = wid

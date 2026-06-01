@@ -7,6 +7,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -47,14 +48,19 @@ class Author(Base):
 
 class Work(Base):
     __tablename__ = "work"
+    # A work relevant to several topics gets one row per topic (own embedding),
+    # so openalex_id is unique only WITHIN a topic — not globally.
+    __table_args__ = (
+        UniqueConstraint("openalex_id", "topic_id", name="work_openalex_topic_key"),
+    )
     id = Column(Integer, primary_key=True)
-    openalex_id = Column(String, unique=True)
+    openalex_id = Column(String, index=True)
     title = Column(Text)
     year = Column(Integer)
     abstract = Column(Text, nullable=True)
     doi = Column(String, nullable=True)
     cited_by_count = Column(Integer, default=0)
-    topic_id = Column(Integer, ForeignKey("topic.id"))
+    topic_id = Column(Integer, ForeignKey("topic.id"), index=True)
 
 
 class Project(Base):

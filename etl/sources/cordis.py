@@ -109,7 +109,7 @@ def fetch_projects():
         # "(" in a future keyword would otherwise break or silently mis-filter).
         pattern = "|".join(re.escape(kw) for kw in CLIMATE_KEYWORDS)
         climate = projects[text_series.str.contains(pattern, na=False, regex=True)].copy()
-        print(f"  cordis: {label} — {len(climate)} climate-related projects (of {len(projects)})")
+        print(f"  cordis: {label} — {len(climate)} matching projects (of {len(projects)})")
 
         org_lookup = {}
         if "projectid" in orgs.columns:
