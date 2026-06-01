@@ -21,8 +21,18 @@ pyalex.config.api_key = os.environ.get("OPENALEX_API_KEY", "")
 pyalex.config.email = "eluvrv@gmail.com"
 
 
+def _reconstruct_abstract(inv_index) -> str:
+    """OpenAlex ships abstracts as an inverted index {word: [positions]}.
+    Rebuild the plain text (used for embeddings / semantic search)."""
+    if not inv_index:
+        return ""
+    positions = [(pos, word) for word, idxs in inv_index.items() for pos in idxs]
+    positions.sort()
+    return " ".join(word for _, word in positions)
+
+
 def fetch_works(max_works=None):
-    """Yield dicts: {openalex_id, title, year, doi, cited_by_count, institutions, authorships}.
+    """Yield dicts: {openalex_id, title, year, abstract, doi, cited_by_count, institutions, authorships}.
 
     institutions: list of {openalex_id, name, country, ror_id, type}
     authorships:  list of {author_openalex_id, author_name, institution_openalex_ids}
@@ -68,6 +78,7 @@ def fetch_works(max_works=None):
                 "openalex_id": w["id"],
                 "title": w.get("display_name") or w.get("title", ""),
                 "year": w.get("publication_year"),
+                "abstract": _reconstruct_abstract(w.get("abstract_inverted_index")),
                 "doi": w.get("doi"),
                 "cited_by_count": w.get("cited_by_count", 0),
                 "institutions": list(institutions.values()),

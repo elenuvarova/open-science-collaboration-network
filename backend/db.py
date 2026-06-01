@@ -13,7 +13,21 @@ if url.startswith("postgres://") or url.startswith("postgresql://"):
     # Normalize any postgres scheme to the psycopg (v3) driver SQLAlchemy uses.
     scheme, _, rest = url.partition("://")
     db_kind = "postgres"
-    engine = create_engine(f"postgresql+psycopg://{rest}", pool_pre_ping=True)
+    # pool_pre_ping: revive a connection that went stale while checked back in.
+    # pool_recycle: drop connections older than 5 min on checkout (Neon free-tier
+    # autosuspends idle compute). TCP keepalives keep an in-use connection alive
+    # across short idle gaps (e.g. the embedding encode) so it isn't reset.
+    engine = create_engine(
+        f"postgresql+psycopg://{rest}",
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        },
+    )
 else:
     db_kind = "sqlite"
     # Anchor the default file to backend/ so the API and the ETL (run from etl/)

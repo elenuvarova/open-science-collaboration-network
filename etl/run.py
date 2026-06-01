@@ -26,6 +26,12 @@ from sources.cordis import fetch_projects
 from sources.openalex import fetch_works
 
 
+def _strip_nul(s: str) -> str:
+    """Postgres text columns reject NUL (0x00) bytes; CORDIS/OpenAlex free text
+    can contain them. Drop them before insert."""
+    return s.replace("\x00", "") if isinstance(s, str) else s
+
+
 def run_topic(topic_cfg: dict):
     """Run the full pipeline for one topic dict from config.TOPICS."""
     name = topic_cfg["name"]
@@ -39,32 +45,75 @@ def run_topic(topic_cfg: dict):
     config.TOPIC_KEYWORDS = topic_cfg["keywords"]
 
     load.init_schema()
-    db = load.SessionLocal()
 
+    # ── PHASE 1 — gather everything in memory (network + CPU, NO DB session) ───
+    # CORDIS download + parsing takes many minutes. Holding an open Neon
+    # transaction idle across that gap gets the SSL connection dropped
+    # ("connection closed unexpectedly"). So we open the DB session only in
+    # phase 2 and do every write in one tight burst.
+
+    # 1. OpenAlex works
+    print("Step 1/8  OpenAlex works…")
+    all_institutions: dict[str, dict] = {}
+    authorships_by_work: list[list[str]] = []
+    works_by_id: dict[str, dict] = {}
+    for w in fetch_works():
+        for inst in w["institutions"]:
+            iid = inst["openalex_id"]
+            if iid not in all_institutions:
+                all_institutions[iid] = inst
+        inst_ids = list({iid for auth in w["authorships"] for iid in auth["institution_openalex_ids"]})
+        if len(inst_ids) > 1:
+            authorships_by_work.append(inst_ids)
+        wid = w["openalex_id"]
+        if w.get("title") and wid not in works_by_id:
+            works_by_id[wid] = {
+                "openalex_id": wid,
+                "title": _strip_nul(w["title"]),
+                "year": w.get("year"),
+                "abstract": _strip_nul(w.get("abstract") or "") or None,
+                "doi": w.get("doi"),
+                "cited_by_count": w.get("cited_by_count") or 0,
+            }
+    print(f"  → {len(works_by_id)} works, {len(authorships_by_work)} co-authorship works, "
+          f"{len(all_institutions)} institutions")
+
+    # 2. CORDIS download + entity matching — match to OpenAlex IDs (DB IDs don't
+    #    exist yet; they're resolved in phase 2 after institutions are written).
+    print("Step 2/8  CORDIS download + entity matching…")
+    import sources.cordis as cordis_mod
+    orig_keywords = cordis_mod.CLIMATE_KEYWORDS
+    cordis_mod.CLIMATE_KEYWORDS = topic_cfg.get("cordis_keywords", topic_cfg["keywords"])
+    by_ror, by_country = build_openalex_index(list(all_institutions.values()))
+    proj_rows: dict[str, dict] = {}                              # cordis_id → project row (deduped)
+    proj_matches: list[tuple[str, list[tuple[str, str]]]] = []   # (cordis_id, [(openalex_id, role)])
+    matched = unmatched = 0
+    try:
+        for proj in fetch_projects():
+            cid = proj["cordis_id"]
+            row = {k: v for k, v in proj.items() if k != "participants"}
+            row["title"] = _strip_nul(row.get("title") or "")
+            row["abstract"] = _strip_nul(row.get("abstract") or "")
+            proj_rows[cid] = row
+            parts: list[tuple[str, str]] = []
+            for p in proj["participants"]:
+                inst_dict, confidence, _ = best_match(p["name"], p["country"], by_ror, by_country)
+                if inst_dict and confidence >= 75:
+                    parts.append((inst_dict["openalex_id"], p["role"]))
+                    matched += 1
+                else:
+                    unmatched += 1
+            proj_matches.append((cid, parts))
+    finally:
+        cordis_mod.CLIMATE_KEYWORDS = orig_keywords  # restore even on error
+
+    # ── PHASE 2 — write everything to the DB in one tight burst ────────────────
+    db = load.SessionLocal()
     try:
         topic = load.get_or_create_topic(db, name, topic_cfg["keywords"])
-        db.flush()
 
-        # ── 1. OpenAlex ──────────────────────────────────────────────────────
-        print("Step 1/6  OpenAlex works…")
-        all_institutions: dict[str, dict] = {}
-        authorships_by_work: list[list[str]] = []
-
-        for w in fetch_works():
-            for inst in w["institutions"]:
-                iid = inst["openalex_id"]
-                if iid not in all_institutions:
-                    all_institutions[iid] = inst
-            inst_ids = list({iid for auth in w["authorships"] for iid in auth["institution_openalex_ids"]})
-            if len(inst_ids) > 1:
-                authorships_by_work.append(inst_ids)
-
-        print(f"  → {len(authorships_by_work)} co-authorship works, {len(all_institutions)} institutions")
-
-        # ── 2. Upsert institutions ────────────────────────────────────────────
-        # One bulk ON CONFLICT … RETURNING instead of a per-row upsert+flush —
-        # the latter is thousands of round-trips to remote Neon (minutes).
-        print("Step 2/6  Upserting institutions…")
+        # 3. Institutions + works
+        print("Step 3/8  Writing institutions + works…")
         inst_rows = [
             {
                 "openalex_id": oa_id,
@@ -78,40 +127,13 @@ def run_topic(topic_cfg: dict):
         ]
         oa_inst_id_map: dict[str, int] = load.bulk_upsert_institutions(db, inst_rows)
 
-        # ── 3. CORDIS ────────────────────────────────────────────────────────
-        print("Step 3/6  CORDIS projects + entity matching…")
+        work_rows = [{**wr, "topic_id": topic.id} for wr in works_by_id.values()]
+        load.bulk_upsert_works(db, work_rows)
+        print(f"  → {len(inst_rows)} institutions, {len(work_rows)} works")
 
-        # Pass topic-specific cordis keywords to the filter
-        import sources.cordis as cordis_mod
-        orig_keywords = cordis_mod.CLIMATE_KEYWORDS
-        cordis_mod.CLIMATE_KEYWORDS = topic_cfg.get("cordis_keywords", topic_cfg["keywords"])
-
-        by_ror, by_country = build_openalex_index(list(all_institutions.values()))
-
-        # Collect everything in memory (matching is local/fast after the ROR fix),
-        # then write projects + participants in bulk — no per-row upsert/flush.
-        proj_rows: dict[str, dict] = {}        # cordis_id → project row (deduped)
-        proj_matches: list[tuple[str, list[tuple[int, str]]]] = []  # (cordis_id, [(inst_db_id, role)])
-        matched = unmatched = 0
-        for proj in fetch_projects():
-            cid = proj["cordis_id"]
-            proj_rows[cid] = {k: v for k, v in proj.items() if k != "participants"}
-            parts: list[tuple[int, str]] = []
-            for p in proj["participants"]:
-                inst_dict, confidence, _ = best_match(p["name"], p["country"], by_ror, by_country)
-                if inst_dict and confidence >= 75:
-                    db_id = oa_inst_id_map.get(inst_dict["openalex_id"])
-                    if db_id:
-                        parts.append((db_id, p["role"]))
-                        matched += 1
-                        continue
-                unmatched += 1
-            proj_matches.append((cid, parts))
-
-        cordis_mod.CLIMATE_KEYWORDS = orig_keywords  # restore
-
+        # 4. Projects + participants (resolve matched OpenAlex IDs → DB IDs now)
+        print("Step 4/8  Writing projects + participants…")
         cid_to_pid = load.bulk_upsert_projects(db, list(proj_rows.values()))
-
         participant_rows: list[dict] = []
         project_participants_db: list[list[int]] = []
         seen_pp: set[tuple[int, int]] = set()
@@ -120,7 +142,10 @@ def run_topic(topic_cfg: dict):
             if not pid:
                 continue
             ids_here: list[int] = []
-            for db_id, role in parts:
+            for oa_id, role in parts:
+                db_id = oa_inst_id_map.get(oa_id)
+                if not db_id:
+                    continue
                 key = (pid, db_id)
                 if key in seen_pp:
                     continue
@@ -129,12 +154,11 @@ def run_topic(topic_cfg: dict):
                 ids_here.append(db_id)
             if len(ids_here) > 1:
                 project_participants_db.append(ids_here)
-
         load.insert_project_participants(db, participant_rows)
         print(f"  → {len(proj_rows)} projects, {matched} matched orgs, {unmatched} unmatched")
 
-        # ── 4. Graph metrics ──────────────────────────────────────────────────
-        print("Step 4/6  Graph metrics…")
+        # 5. Graph metrics
+        print("Step 5/8  Graph metrics…")
         db_authorships = [
             [oa_inst_id_map[oid] for oid in ids if oid in oa_inst_id_map]
             for ids in authorships_by_work
@@ -142,8 +166,8 @@ def run_topic(topic_cfg: dict):
         G, metrics = build_graph(db_authorships, project_participants_db)
         print(f"  → {len(G.nodes)} nodes, {len(G.edges)} edges")
 
-        # ── 5. Partner Fit Score ──────────────────────────────────────────────
-        print("Step 5/6  Partner Fit Scores…")
+        # 6. Partner Fit Score
+        print("Step 6/8  Partner Fit Scores…")
         work_counts: dict[str, int] = defaultdict(int)
         for ids in authorships_by_work:
             for oid in ids:
@@ -185,8 +209,8 @@ def run_topic(topic_cfg: dict):
             })
         load.replace_topic_metrics(db, topic.id, metric_rows)
 
-        # ── 6. Collaboration edges (per-topic) ────────────────────────────────
-        print("Step 6/6  Writing edges…")
+        # 7. Collaboration edges (per-topic)
+        print("Step 7/8  Writing edges…")
         # Edges are topic-scoped: clear only THIS topic's edges, never other
         # topics' — institutions are shared across topics, so deleting by node
         # would clobber edges that belong to a different topic's graph.
@@ -199,8 +223,8 @@ def run_topic(topic_cfg: dict):
         db.commit()
         print(f"  Done — {len(oa_inst_id_map)} institutions, {len(G.edges)} edges")
 
-        # ── 7. Embeddings + AI brief ──────────────────────────────────────────
-        print("Step 7/7  Embeddings + AI brief…")
+        # 8. Embeddings + AI brief (own session)
+        print("Step 8/8  Embeddings + AI brief…")
         embed_db = load.SessionLocal()
         try:
             embed_topic(embed_db, name)

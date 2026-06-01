@@ -125,6 +125,7 @@ def add_edge(db, source_id, target_id, topic_id, type_, weight=1.0):
 
 _INST_COLS = ("name", "normalized_name", "country", "type", "ror_id")
 _PROJ_COLS = ("title", "abstract", "programme", "countries")
+_WORK_COLS = ("title", "year", "abstract", "doi", "cited_by_count", "topic_id")
 
 
 def bulk_upsert_institutions(db, rows):
@@ -162,6 +163,25 @@ def bulk_upsert_projects(db, rows):
         ).returning(models.Project.id, models.Project.cordis_id)
         for pid, cid in db.execute(stmt).all():
             id_map[cid] = pid
+    return id_map
+
+
+def bulk_upsert_works(db, rows):
+    """rows: dicts with openalex_id + _WORK_COLS. Returns {openalex_id: id}.
+    rows must be unique on openalex_id. Stored so embeddings + semantic search
+    have content (a work belongs to one topic via topic_id)."""
+    if not rows:
+        return {}
+    ins = _dialect_insert()
+    id_map = {}
+    for chunk in _chunks(rows, 500):
+        stmt = ins(models.Work).values(chunk)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["openalex_id"],
+            set_={c: getattr(stmt.excluded, c) for c in _WORK_COLS},
+        ).returning(models.Work.id, models.Work.openalex_id)
+        for wid, oa in db.execute(stmt).all():
+            id_map[oa] = wid
     return id_map
 
 
@@ -213,6 +233,7 @@ __all__ = [
     "add_edge",
     "bulk_upsert_institutions",
     "bulk_upsert_projects",
+    "bulk_upsert_works",
     "insert_project_participants",
     "replace_topic_metrics",
 ]
