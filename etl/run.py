@@ -62,22 +62,21 @@ def run_topic(topic_cfg: dict):
         print(f"  → {len(authorships_by_work)} co-authorship works, {len(all_institutions)} institutions")
 
         # ── 2. Upsert institutions ────────────────────────────────────────────
-        # Sort by openalex_id so all parallel processes acquire row-locks in the
-        # same order — prevents deadlocks when multiple topics run concurrently.
+        # One bulk ON CONFLICT … RETURNING instead of a per-row upsert+flush —
+        # the latter is thousands of round-trips to remote Neon (minutes).
         print("Step 2/6  Upserting institutions…")
-        oa_inst_id_map: dict[str, int] = {}
-        for oa_id, inst in sorted(all_institutions.items()):
-            db_inst = load.upsert_institution(
-                db,
-                openalex_id=oa_id,
-                name=inst["name"],
-                normalized_name=normalize_name(inst["name"]),
-                country=(inst.get("country") or "").upper(),
-                type=inst.get("type") or "unknown",
-                ror_id=inst.get("ror_id") or None,
-            )
-            db.flush()
-            oa_inst_id_map[oa_id] = db_inst.id
+        inst_rows = [
+            {
+                "openalex_id": oa_id,
+                "name": inst["name"],
+                "normalized_name": normalize_name(inst["name"]),
+                "country": (inst.get("country") or "").upper(),
+                "type": inst.get("type") or "unknown",
+                "ror_id": inst.get("ror_id") or None,
+            }
+            for oa_id, inst in sorted(all_institutions.items())
+        ]
+        oa_inst_id_map: dict[str, int] = load.bulk_upsert_institutions(db, inst_rows)
 
         # ── 3. CORDIS ────────────────────────────────────────────────────────
         print("Step 3/6  CORDIS projects + entity matching…")
@@ -88,29 +87,51 @@ def run_topic(topic_cfg: dict):
         cordis_mod.CLIMATE_KEYWORDS = topic_cfg.get("cordis_keywords", topic_cfg["keywords"])
 
         by_ror, by_country = build_openalex_index(list(all_institutions.values()))
-        project_participants_db: list[list[int]] = []
-        projects_added = matched = unmatched = 0
 
+        # Collect everything in memory (matching is local/fast after the ROR fix),
+        # then write projects + participants in bulk — no per-row upsert/flush.
+        proj_rows: dict[str, dict] = {}        # cordis_id → project row (deduped)
+        proj_matches: list[tuple[str, list[tuple[int, str]]]] = []  # (cordis_id, [(inst_db_id, role)])
+        matched = unmatched = 0
         for proj in fetch_projects():
-            db_proj = load.upsert_project(db, **{k: v for k, v in proj.items() if k != "participants"})
-            db.flush()
-            projects_added += 1
-            participant_db_ids: list[int] = []
+            cid = proj["cordis_id"]
+            proj_rows[cid] = {k: v for k, v in proj.items() if k != "participants"}
+            parts: list[tuple[int, str]] = []
             for p in proj["participants"]:
                 inst_dict, confidence, _ = best_match(p["name"], p["country"], by_ror, by_country)
                 if inst_dict and confidence >= 75:
                     db_id = oa_inst_id_map.get(inst_dict["openalex_id"])
                     if db_id:
-                        load.upsert_project_participant(db, db_proj.id, db_id, p["role"])
-                        participant_db_ids.append(db_id)
+                        parts.append((db_id, p["role"]))
                         matched += 1
-                else:
-                    unmatched += 1
-            if len(participant_db_ids) > 1:
-                project_participants_db.append(participant_db_ids)
+                        continue
+                unmatched += 1
+            proj_matches.append((cid, parts))
 
         cordis_mod.CLIMATE_KEYWORDS = orig_keywords  # restore
-        print(f"  → {projects_added} projects, {matched} matched orgs, {unmatched} unmatched")
+
+        cid_to_pid = load.bulk_upsert_projects(db, list(proj_rows.values()))
+
+        participant_rows: list[dict] = []
+        project_participants_db: list[list[int]] = []
+        seen_pp: set[tuple[int, int]] = set()
+        for cid, parts in proj_matches:
+            pid = cid_to_pid.get(cid)
+            if not pid:
+                continue
+            ids_here: list[int] = []
+            for db_id, role in parts:
+                key = (pid, db_id)
+                if key in seen_pp:
+                    continue
+                seen_pp.add(key)
+                participant_rows.append({"project_id": pid, "institution_id": db_id, "role": role})
+                ids_here.append(db_id)
+            if len(ids_here) > 1:
+                project_participants_db.append(ids_here)
+
+        load.insert_project_participants(db, participant_rows)
+        print(f"  → {len(proj_rows)} projects, {matched} matched orgs, {unmatched} unmatched")
 
         # ── 4. Graph metrics ──────────────────────────────────────────────────
         print("Step 4/6  Graph metrics…")
@@ -136,6 +157,7 @@ def run_topic(topic_cfg: dict):
         max_degree = max((m["degree_centrality"] for m in metrics.values()), default=1) or 1
         max_projects = max(project_counts.values(), default=1)
 
+        metric_rows = []
         for oa_id, db_id in oa_inst_id_map.items():
             m = metrics.get(db_id, {})
             wc = work_counts.get(oa_id, 0)
@@ -150,16 +172,18 @@ def run_topic(topic_cfg: dict):
                 "recent_activity": 1.0,
             }
             score, breakdown = partner_fit_score(components)
-            load.set_metric(
-                db, db_id, topic.id,
-                degree_centrality=m.get("degree_centrality", 0.0),
-                betweenness=m.get("betweenness", 0.0),
-                community_id=m.get("community_id"),
-                partner_fit_score=score,
-                score_breakdown=breakdown,
-                recent_works=wc,
-                eu_projects=pc,
-            )
+            metric_rows.append({
+                "institution_id": db_id,
+                "topic_id": topic.id,
+                "degree_centrality": m.get("degree_centrality", 0.0),
+                "betweenness": m.get("betweenness", 0.0),
+                "community_id": m.get("community_id"),
+                "partner_fit_score": score,
+                "score_breakdown": breakdown,
+                "recent_works": wc,
+                "eu_projects": pc,
+            })
+        load.replace_topic_metrics(db, topic.id, metric_rows)
 
         # ── 6. Collaboration edges (per-topic) ────────────────────────────────
         print("Step 6/6  Writing edges…")
