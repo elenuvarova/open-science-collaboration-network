@@ -81,6 +81,9 @@ def embed_topic(db, topic_name: str) -> None:
             sims = (mat / np.maximum(norms, 1e-9)) @ q_vec
             top_idxs = np.argsort(-sims)[:TOP_WORKS]
             relevant_works = [id_to_work[ranked_ids[i]] for i in top_idxs if ranked_ids[i] in id_to_work]
+            stale = sum(1 for i in top_idxs if ranked_ids[i] not in id_to_work)
+            if stale:
+                print(f"  embed: {stale} stale embedding IDs skipped in ranking")
         else:
             relevant_works = sorted(works, key=lambda w: w.cited_by_count or 0, reverse=True)[:TOP_WORKS]
     else:

@@ -105,11 +105,14 @@ def fetch_projects():
         id_col = "id" if "id" in projects.columns else projects.columns[0]
 
         # Vectorised keyword filter — 100x faster than apply(axis=1) on 50k rows
+        def _col(df, name):
+            return df[name].fillna("").str.lower() if name in df.columns else pd.Series("", index=df.index)
+
         text_series = (
-            projects.get("objective", pd.Series(dtype=str)).fillna("").str.lower() + " " +
-            projects.get("title",     pd.Series(dtype=str)).fillna("").str.lower() + " " +
-            projects.get("topics",    pd.Series(dtype=str)).fillna("").str.lower() + " " +
-            projects.get("euroscivoc", pd.Series(dtype=str)).fillna("").str.lower()
+            _col(projects, "objective") + " " +
+            _col(projects, "title") + " " +
+            _col(projects, "topics") + " " +
+            _col(projects, "euroscivoc")
         )
         pattern = "|".join(CLIMATE_KEYWORDS)
         climate = projects[text_series.str.contains(pattern, na=False, regex=True)].copy()
