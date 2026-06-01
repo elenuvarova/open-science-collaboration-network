@@ -40,33 +40,49 @@ def embed_topic(db, topic_name: str) -> None:
     ]
 
     # ── 1. Embeddings ────────────────────────────────────────────────────────
+    # id → (work_obj, embedding_vector)
+    id_to_work: dict[int, object] = {w_id: w for w_id, w, _ in texts_with_meta}
     id_to_vec: dict[int, list] = {}
-    work_objs_ordered: list = []
 
     if texts_with_meta:
-        model = _embedder()
-        ids, work_objs_ordered, docs = zip(*texts_with_meta)
-        print(f"  embed: encoding {len(docs)} works…")
-        vecs = list(model.embed(list(docs)))
+        # Skip works already embedded — speeds up re-runs significantly
+        all_work_ids = [w_id for w_id, _, _ in texts_with_meta]
+        already_rows = db.query(WorkEmbedding).filter(
+            WorkEmbedding.work_id.in_(all_work_ids)
+        ).all()
+        already_embedded = {row.work_id: row.embedding for row in already_rows}
+        id_to_vec.update(already_embedded)
 
-        for work_id, vec in zip(ids, vecs):
-            id_to_vec[work_id] = vec.tolist()
-            existing = db.query(WorkEmbedding).filter_by(work_id=work_id).first()
-            if existing:
-                existing.embedding = id_to_vec[work_id]
-            else:
-                db.add(WorkEmbedding(work_id=work_id, embedding=id_to_vec[work_id]))
-        db.flush()
-        print(f"  embed: {len(vecs)} embeddings stored")
+        new_texts = [(w_id, w, t) for w_id, w, t in texts_with_meta if w_id not in already_embedded]
+        print(f"  embed: {len(already_embedded)} already embedded, {len(new_texts)} new to encode")
 
-        # Rank works by cosine similarity to topic query
-        topic_query = f"{topic.name} {' '.join(topic.keywords or [])}"
-        q_vec = np.array(next(model.embed([topic_query])))
-        mat = np.array(vecs)
-        norms = np.linalg.norm(mat, axis=1, keepdims=True)
-        sims = (mat / np.maximum(norms, 1e-9)) @ q_vec
-        top_idxs = np.argsort(-sims)[:TOP_WORKS]
-        relevant_works = [work_objs_ordered[i] for i in top_idxs]
+        model = None
+        if new_texts:
+            model = _embedder()
+            new_ids, _, new_docs = zip(*new_texts)
+            print(f"  embed: encoding {len(new_docs)} works…")
+            new_vecs = list(model.embed(list(new_docs)))
+            for work_id, vec in zip(new_ids, new_vecs):
+                vec_list = vec.tolist()
+                id_to_vec[work_id] = vec_list
+                db.add(WorkEmbedding(work_id=work_id, embedding=vec_list))
+            db.flush()
+            print(f"  embed: {len(new_vecs)} new embeddings stored")
+
+        # Rank ALL embedded works by cosine similarity to topic query
+        if id_to_vec:
+            if model is None:
+                model = _embedder()
+            topic_query = f"{topic.name} {' '.join(topic.keywords or [])}"
+            q_vec = np.array(next(model.embed([topic_query])))
+            ranked_ids = list(id_to_vec.keys())
+            mat = np.array([id_to_vec[i] for i in ranked_ids])
+            norms = np.linalg.norm(mat, axis=1, keepdims=True)
+            sims = (mat / np.maximum(norms, 1e-9)) @ q_vec
+            top_idxs = np.argsort(-sims)[:TOP_WORKS]
+            relevant_works = [id_to_work[ranked_ids[i]] for i in top_idxs if ranked_ids[i] in id_to_work]
+        else:
+            relevant_works = sorted(works, key=lambda w: w.cited_by_count or 0, reverse=True)[:TOP_WORKS]
     else:
         # Fallback: top by citations
         relevant_works = sorted(works, key=lambda w: w.cited_by_count or 0, reverse=True)[:TOP_WORKS]
