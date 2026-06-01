@@ -3,6 +3,7 @@ import { getTopics } from "./api";
 import NetworkMap from "./pages/NetworkMap";
 import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
+import BriefView from "./pages/BriefView";
 import Tour from "./components/Tour";
 import ThemeToggle from "./components/ThemeToggle";
 
@@ -10,6 +11,7 @@ const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
   { id: "network",   label: "Network Map" },
   { id: "gaps",      label: "Consortium Gaps" },
+  { id: "brief",     label: "AI Brief" },
 ];
 
 function useTheme() {
@@ -93,6 +95,7 @@ export default function App() {
         {topicId && page === "shortlist" && <Shortlist topicId={topicId} />}
         {topicId && page === "network"   && <NetworkMap topicId={topicId} />}
         {topicId && page === "gaps"      && <GapView topicId={topicId} />}
+        {topicId && page === "brief"     && <BriefView topicId={topicId} />}
       </main>
     </div>
   );

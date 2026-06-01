@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import Base, db_kind, engine
-from routers import graph, health, institutions, topics
+from routers import brief, graph, health, institutions, topics
 
 # Models register on Base via import; create tables if missing (no-op when they exist).
 import models  # noqa: E402,F401
@@ -18,6 +18,7 @@ app.include_router(health.router)
 app.include_router(topics.router)
 app.include_router(institutions.router)
 app.include_router(graph.router)
+app.include_router(brief.router)
 
 if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") == "1":
     public_dir = os.path.join(os.path.dirname(__file__), "public")

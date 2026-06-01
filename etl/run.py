@@ -20,6 +20,7 @@ from graph import build_graph
 from match import best_match, build_openalex_index
 from models import CollaborationEdge
 from normalize import normalize_name
+from embed import embed_topic
 from score import partner_fit_score
 from sources.cordis import fetch_projects
 from sources.openalex import fetch_works
@@ -173,6 +174,18 @@ def run_topic(topic_cfg: dict):
 
         db.commit()
         print(f"  Done — {len(oa_inst_id_map)} institutions, {len(G.edges)} edges")
+
+        # ── 7. Embeddings + AI brief ──────────────────────────────────────────
+        print("Step 7/7  Embeddings + AI brief…")
+        embed_db = load.SessionLocal()
+        try:
+            embed_topic(embed_db, name)
+            embed_db.commit()
+        except Exception as e:
+            embed_db.rollback()
+            print(f"  embed: error (non-fatal): {e}")
+        finally:
+            embed_db.close()
 
     except Exception:
         db.rollback()

@@ -49,3 +49,10 @@ class GraphEdge(BaseModel):
 class GraphOut(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+
+
+class BriefOut(BaseModel):
+    topic_id: int
+    text: str
+    generated_at: Optional[str] = None
+    model: Optional[str] = None

@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { getInstitutions } from "../api";
 
 const ROLES = [
-  { key: "research",   label: "Research lead",        types: ["university"] },
-  { key: "technical",  label: "Technical partner",     types: ["company"] },
-  { key: "policy",     label: "Policy / public body",  types: ["public_body"] },
-  { key: "ngo",        label: "NGO / civil society",   types: ["ngo"] },
-  { key: "evaluation", label: "Impact evaluation",     types: ["university", "company"] },
+  { key: "research",   label: "Research lead",        types: ["education", "university"] },
+  { key: "technical",  label: "Technical partner",     types: ["company", "facility"] },
+  { key: "policy",     label: "Policy / public body",  types: ["government", "public_body"] },
+  { key: "ngo",        label: "NGO / civil society",   types: ["ngo", "nonprofit"] },
+  { key: "evaluation", label: "Impact evaluation",     types: ["education", "university", "company"] },
   { key: "geographic", label: "Geographic diversity",  types: [] },
 ];
 
