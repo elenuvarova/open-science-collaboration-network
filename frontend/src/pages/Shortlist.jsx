@@ -7,7 +7,13 @@ import SkeletonList from "../components/SkeletonList";
 import EmptyState from "../components/EmptyState";
 
 const COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"];
-const TYPES = ["university", "company", "ngo", "public_body"];
+const TYPES = [
+  { value: "education",   label: "Education" },
+  { value: "company",     label: "Company" },
+  { value: "government",  label: "Government" },
+  { value: "nonprofit",   label: "NGO / nonprofit" },
+  { value: "healthcare",  label: "Healthcare" },
+];
 
 function fmt(n) {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
@@ -130,7 +136,7 @@ export default function Shortlist({ topicId }) {
         </select>
         <select className="filter-select" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">All types</option>
-          {TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+          {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         <select className="filter-select" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}>
           <option value={0}>Any score</option>
