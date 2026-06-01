@@ -88,7 +88,7 @@ function HoverCard({ inst, anchor }) {
   );
 }
 
-export default function Shortlist({ topicId }) {
+export default function Shortlist({ topicId, consortium = [], onToggleConsortium }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [country, setCountry] = useState("");
@@ -127,8 +127,44 @@ export default function Shortlist({ topicId }) {
     return <InstitutionProfile id={selected} topicId={topicId} onBack={() => setSelected(null)} />;
   }
 
+  const consortiumIds = new Set(consortium.map(i => i.id));
+
   return (
     <div>
+      {consortium.length > 0 && (
+        <div className="card" style={{ marginBottom: "var(--sp-4)", display: "flex", alignItems: "center", gap: "var(--sp-3)", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
+            My Consortium ({consortium.length})
+          </span>
+          <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", flex: 1 }}>
+            {consortium.map(inst => (
+              <span key={inst.id} className="tag" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+                onClick={() => onToggleConsortium(inst)}>
+                {inst.name} ×
+              </span>
+            ))}
+          </div>
+          <button
+            className="filter-select"
+            style={{ cursor: "pointer", fontSize: "var(--text-xs)" }}
+            onClick={() => {
+              const header = "Rank,Name,Country,Type,Score";
+              const rows = consortium.map((inst, i) =>
+                [i + 1, `"${inst.name.replace(/"/g, '""')}"`, inst.country || "", inst.type || "",
+                 inst.partner_fit_score.toFixed(0)].join(",")
+              );
+              const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "consortium.csv";
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }}
+          >
+            Export consortium
+          </button>
+        </div>
+      )}
       <div className="filter-bar">
         <select className="filter-select" value={country} onChange={(e) => setCountry(e.target.value)}>
           <option value="">All countries</option>
@@ -179,30 +215,53 @@ export default function Shortlist({ topicId }) {
         />
       )}
 
-      {!loading && list.map((inst, i) => (
-        <div
-          key={inst.id}
-          className="inst-row"
-          onClick={() => setSelected(inst.id)}
-          onMouseEnter={(e) => onMouseEnter(inst, e.currentTarget)}
-          onMouseLeave={onMouseLeave}
-        >
-          <span className="inst-rank">{i + 1}</span>
-          <div className="inst-info">
-            <div className="inst-name">{inst.name}</div>
-            <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: 3 }}>
-              <TypeBadge type={inst.type} />
-              <span>{inst.country}</span>
-              <span>·</span>
-              <span>{fmt(inst.recent_works)} works</span>
-              {inst.eu_projects > 0 && <><span>·</span><span>{inst.eu_projects} EU projects</span></>}
+      {!loading && list.map((inst, i) => {
+        const inConsortium = consortiumIds.has(inst.id);
+        return (
+          <div
+            key={inst.id}
+            className="inst-row"
+            style={inConsortium ? { borderLeft: "2px solid var(--accent)", paddingLeft: "calc(var(--sp-3) - 2px)" } : undefined}
+            onClick={() => setSelected(inst.id)}
+            onMouseEnter={(e) => onMouseEnter(inst, e.currentTarget)}
+            onMouseLeave={onMouseLeave}
+          >
+            <span className="inst-rank">{i + 1}</span>
+            <div className="inst-info">
+              <div className="inst-name">{inst.name}</div>
+              <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: 3 }}>
+                <TypeBadge type={inst.type} />
+                <span>{inst.country}</span>
+                <span>·</span>
+                <span>{fmt(inst.recent_works)} works</span>
+                {inst.eu_projects > 0 && <><span>·</span><span>{inst.eu_projects} EU projects</span></>}
+              </div>
             </div>
+            <span className={`score-pill ${scoreClass(inst.partner_fit_score)}`}>
+              {inst.partner_fit_score.toFixed(0)}
+            </span>
+            {onToggleConsortium && (
+              <button
+                title={inConsortium ? "Remove from consortium" : "Add to consortium"}
+                onClick={(e) => { e.stopPropagation(); onToggleConsortium(inst); }}
+                style={{
+                  marginLeft: "var(--sp-2)",
+                  width: 24, height: 24,
+                  borderRadius: "var(--r-full)",
+                  border: "1px solid var(--border)",
+                  background: inConsortium ? "var(--accent)" : "none",
+                  color: inConsortium ? "#fff" : "var(--text-3)",
+                  fontSize: 14, lineHeight: 1,
+                  cursor: "pointer", flexShrink: 0,
+                  transition: "background 120ms, color 120ms",
+                }}
+              >
+                {inConsortium ? "✓" : "+"}
+              </button>
+            )}
           </div>
-          <span className={`score-pill ${scoreClass(inst.partner_fit_score)}`}>
-            {inst.partner_fit_score.toFixed(0)}
-          </span>
-        </div>
-      ))}
+        );
+      })}
 
       <HoverCard inst={hovered} anchor={hoverAnchor} />
     </div>

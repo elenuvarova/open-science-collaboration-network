@@ -34,6 +34,15 @@ export default function App() {
   const [page, setPage] = useState("shortlist");
   const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
   const [theme, toggleTheme] = useTheme();
+  const [consortium, setConsortium] = useState([]);
+
+  function toggleConsortium(inst) {
+    setConsortium(prev =>
+      prev.find(i => i.id === inst.id)
+        ? prev.filter(i => i.id !== inst.id)
+        : [...prev, inst]
+    );
+  }
 
   useEffect(() => {
     getTopics().then((t) => {
@@ -94,9 +103,9 @@ export default function App() {
 
       <main key={page} className={`fade-in ${isWide ? "page-wide" : "page"}`}>
         {!topicId && <div className="spinner">Loading topics…</div>}
-        {topicId && page === "shortlist" && <Shortlist topicId={topicId} />}
+        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} />}
         {topicId && page === "network"   && <NetworkMap topicId={topicId} />}
-        {topicId && page === "gaps"      && <GapView topicId={topicId} />}
+        {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={() => setConsortium([])} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
       </main>
