@@ -12,6 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
+import bisect
+import math
 from collections import defaultdict
 
 import config
@@ -57,11 +59,17 @@ def run_topic(topic_cfg: dict):
     all_institutions: dict[str, dict] = {}
     authorships_by_work: list[list[str]] = []
     works_by_id: dict[str, dict] = {}
+    inst_work_total: dict[str, int] = defaultdict(int)   # works per institution (topic capacity)
+    inst_work_recent: dict[str, int] = defaultdict(int)  # of those, dated >= 2024 (recency)
     for w in fetch_works():
+        is_recent = (w.get("year") or 0) >= 2024
         for inst in w["institutions"]:
             iid = inst["openalex_id"]
             if iid not in all_institutions:
                 all_institutions[iid] = inst
+            inst_work_total[iid] += 1
+            if is_recent:
+                inst_work_recent[iid] += 1
         inst_ids = list({iid for auth in w["authorships"] for iid in auth["institution_openalex_ids"]})
         if len(inst_ids) > 1:
             authorships_by_work.append(inst_ids)
@@ -168,32 +176,44 @@ def run_topic(topic_cfg: dict):
 
         # 6. Partner Fit Score
         print("Step 6/8  Partner Fit Scores…")
-        work_counts: dict[str, int] = defaultdict(int)
-        for ids in authorships_by_work:
-            for oid in ids:
-                work_counts[oid] += 1
         project_counts: dict[int, int] = defaultdict(int)
         for ids in project_participants_db:
             for db_id in ids:
                 project_counts[db_id] += 1
 
-        max_works_val = max(work_counts.values(), default=1)
-        max_degree = max((m["degree_centrality"] for m in metrics.values()), default=1) or 1
-        max_projects = max(project_counts.values(), default=1)
+        # Percentile-rank normalisation. Dividing heavy-tailed counts by the
+        # single maximum crushed everyone into the low end (one leader → 1.0,
+        # the rest ≈ 0). Ranking each institution against its topic cohort
+        # spreads the score across the full range and reads as "top N% on X".
+        oa_ids = list(oa_inst_id_map.keys())
+        N = len(oa_ids) or 1
+        work_of = {o: inst_work_total.get(o, 0) for o in oa_ids}
+        proj_of = {o: project_counts.get(oa_inst_id_map[o], 0) for o in oa_ids}
+        deg_of = {o: metrics.get(oa_inst_id_map[o], {}).get("degree_centrality", 0.0) for o in oa_ids}
+
+        def _pct(value_of):
+            """oa_id → fraction of the cohort with a strictly smaller value
+            (0 for zeros/minimum, ~1 for the top)."""
+            ordered = sorted(value_of.values())
+            return {o: bisect.bisect_left(ordered, value_of[o]) / N for o in oa_ids}
+
+        pct_work, pct_proj, pct_deg = _pct(work_of), _pct(proj_of), _pct(deg_of)
+        max_works_val = max(work_of.values(), default=1) or 1
 
         metric_rows = []
         for oa_id, db_id in oa_inst_id_map.items():
             m = metrics.get(db_id, {})
-            wc = work_counts.get(oa_id, 0)
-            pc = project_counts.get(db_id, 0)
+            wc = work_of[oa_id]
+            pc = proj_of[oa_id]
+            recent = inst_work_recent.get(oa_id, 0)
             country = (all_institutions[oa_id].get("country") or "").upper()
             components = {
-                "topic_relevance": min(wc / max(max_works_val * 0.1, 1), 1.0),
-                "publication_activity": min(wc / max_works_val, 1.0),
-                "eu_project_participation": min(pc / max_projects, 1.0),
-                "network_centrality": m.get("degree_centrality", 0.0) / max_degree,
+                "topic_relevance": pct_work[oa_id],
+                "publication_activity": math.log1p(wc) / math.log1p(max_works_val),
+                "eu_project_participation": pct_proj[oa_id],
+                "network_centrality": pct_deg[oa_id],
                 "country_diversity": 1.0 if country in config.FOCUS_COUNTRIES else 0.5,
-                "recent_activity": 1.0,
+                "recent_activity": (recent / wc) if wc else 0.0,
             }
             score, breakdown = partner_fit_score(components)
             metric_rows.append({
