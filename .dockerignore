@@ -1,9 +1,22 @@
 node_modules
+**/node_modules
 dist
 build
+# Never bake secrets into the image — exclude env files at any depth.
 .env
 .env.local
 .env.*
+**/.env
+**/.env.*
 .git
 *.log
 .DS_Store
+# Python / local artifacts that must not leak into the image.
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+*.sqlite
+*.sqlite-journal
+etl/.cache
+backend/public
