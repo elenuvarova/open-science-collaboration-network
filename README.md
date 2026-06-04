@@ -21,7 +21,6 @@ See **[PLAN.md](PLAN.md)** for the full architecture, data model, ETL design, ro
 │   ├── main.py  db.py  models.py  schemas.py  routers/
 ├── etl/               Python pipeline (OpenAlex + CORDIS → graph → scores → DB)
 │   ├── run.py  config.py  sources/  normalize.py  match.py  graph.py  score.py  load.py
-├── .github/workflows/etl.yml
 ├── Dockerfile  render.yaml  PLAN.md
 ```
 
@@ -58,12 +57,19 @@ Open [http://localhost:5173](http://localhost:5173). The frontend proxies `/api`
 
 ## Deploy (all free)
 
-1. **Database:** create a free [Neon](https://neon.com) Postgres project; copy the connection string.
-2. **ETL:** push to GitHub (public repo). Add `DATABASE_URL` and `OPENALEX_API_KEY` as repo secrets. The workflow in `.github/workflows/etl.yml` runs weekly (and on demand) to populate Postgres.
-3. **API:** in Render, **New → Blueprint**, connect the repo. Set `DATABASE_URL` (the Neon string) in the dashboard. The free web service sleeps after ~15 min idle (~1 min cold start); the ETL ping keeps it warm.
-4. **Frontend:** deploy `frontend/` to Vercel or Cloudflare Pages.
+The app ships as a **single Docker image** (frontend + FastAPI + the bundled ETL)
+that runs against the container host's own Postgres — no external DB and no
+GitHub Actions cron.
 
-> **Why Neon, not Render Postgres?** Render's free Postgres now **expires after 30 days**. Neon's free tier (0.5 GB) **never expires** and includes `pgvector` for the v2 RAG layer.
+1. **Build & run** the `Dockerfile`. It serves `/api` + the built SPA on port `8000`.
+2. **Set env vars** on the container:
+   - `DATABASE_URL` — Postgres connection string (no SSL needed for an
+     internal/co-located DB; SSL is only used if the URL itself asks for it).
+   - `OPENALEX_API_KEY`, `GROQ_API_KEY` — used by the ETL.
+   - `ENABLE_SCHEDULER=1` — turns on the in-process ETL scheduler.
+3. **Populate:** on first boot with an empty DB, the scheduler runs the ETL once
+   to populate, then re-runs it **weekly (Mondays 04:00 UTC)** in a background
+   thread. No manual step and no external cron required.
 
 ## Endpoints
 

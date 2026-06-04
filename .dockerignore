@@ -18,5 +18,8 @@ build
 **/*.py[cod]
 *.sqlite
 *.sqlite-journal
+# The ETL is now bundled into the image, but its local-dev artifacts must not be:
+# the venv (huge, platform-specific) and the downloaded CORDIS ZIPs (regenerated).
+etl/.venv
 etl/.cache
 backend/public

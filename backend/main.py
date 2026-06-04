@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from db import Base, db_kind, engine
 from routers import brief, graph, health, institutions, search, topics
+from scheduler import start_scheduler
 
 # Models register on Base via import; create tables if missing (no-op when they exist).
 import models  # noqa: E402,F401
@@ -20,6 +21,14 @@ app.include_router(institutions.router)
 app.include_router(graph.router)
 app.include_router(brief.router)
 app.include_router(search.router)
+
+
+@app.on_event("startup")
+def _start_etl_scheduler() -> None:
+    # Spawns a daemon thread (or no-ops if ENABLE_SCHEDULER != 1) and returns
+    # immediately — never blocks the port bind or the event loop. The thread
+    # populates an empty DB once, then runs the ETL weekly (Mon 04:00 UTC).
+    start_scheduler()
 
 if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") == "1":
     public_dir = os.path.join(os.path.dirname(__file__), "public")

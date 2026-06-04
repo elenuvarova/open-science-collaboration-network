@@ -19,7 +19,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+# Bundle the ETL so the in-process scheduler can run it as a subprocess
+# (python /app/etl/run.py). Installed on top of the backend deps; fastembed is
+# ONNX (no torch) so the extra weight is moderate.
+COPY etl/requirements.txt /app/etl/requirements.txt
+RUN pip install --no-cache-dir -r /app/etl/requirements.txt
 COPY backend/ ./
+COPY etl/ /app/etl/
 COPY --from=frontend-build /app/frontend/dist ./public
 
 # Run as a non-root user.
