@@ -21,7 +21,7 @@ export default function GraphControls({ cyRef }) {
     <div style={{
       position: "absolute", top: "var(--sp-3)", right: "var(--sp-3)",
       display: "flex", flexDirection: "column", gap: "var(--sp-1)",
-      zIndex: 10,
+      zIndex: "var(--z-overlay)",
     }}>
       {btn("+", "Zoom in",  () => cyRef.current?.zoom(cyRef.current.zoom() * 1.3))}
       {btn("−", "Zoom out", () => cyRef.current?.zoom(cyRef.current.zoom() * 0.77))}

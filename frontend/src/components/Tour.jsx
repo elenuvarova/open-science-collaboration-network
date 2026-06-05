@@ -73,7 +73,7 @@ export default function Tour({ onClose }) {
     <div style={{
       position: "fixed", inset: 0, background: "var(--scrim)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 1000, padding: "1rem",
+      zIndex: "var(--z-modal)", padding: "var(--sp-4)",
     }}>
       <div
         ref={dialogRef}
@@ -84,12 +84,12 @@ export default function Tour({ onClose }) {
         onKeyDown={onKeyDown}
         style={{
           background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: 14, width: "100%", maxWidth: 480,
-          padding: "2rem", position: "relative",
+          borderRadius: "var(--r-xl)", width: "100%", maxWidth: 480,
+          padding: "var(--sp-8)", position: "relative",
         }}
       >
         {/* Progress dots */}
-        <div style={{ display: "flex", gap: "6px", marginBottom: "var(--sp-6)", justifyContent: "center" }}>
+        <div style={{ display: "flex", gap: "var(--sp-2)", marginBottom: "var(--sp-6)", justifyContent: "center" }}>
           {STEPS.map((_, i) => (
             <button
               key={i}
@@ -97,9 +97,9 @@ export default function Tour({ onClose }) {
               aria-label={`Go to step ${i + 1} of ${STEPS.length}`}
               aria-current={i === step ? "step" : undefined}
               style={{
-                width: i === step ? 20 : 8, height: 8, borderRadius: 4, padding: 0,
+                width: i === step ? 20 : 8, height: 8, borderRadius: "var(--r-full)", padding: 0,
                 border: "none", background: i === step ? "var(--accent)" : "var(--border)",
-                transition: "width 0.2s, background 0.2s", cursor: "pointer",
+                transition: "width var(--dur-slow), background var(--dur-slow)", cursor: "pointer",
               }}
             />
           ))}

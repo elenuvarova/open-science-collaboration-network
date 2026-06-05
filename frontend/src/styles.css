@@ -14,21 +14,26 @@
   --sp-12: 48px;
 
   /*
-   * Type scale — 5 levels with clear 1.5× jumps between them.
+   * Type scale — the two mid-level steps (lg/xl) fill the old 16→24 gap so
+   * sub-headings (card titles, the institution name, the hover-card name,
+   * brief section headings) read as a distinct tier instead of borrowing body.
    *
    * Level 1  caption  : 11px — footnotes, graph labels, eyebrow uppercase
    * Level 2  secondary: 13px — meta, nav, filter, muted
    * Level 3  body     : 16px — primary content, list item names
-   * Level 4  heading  : 24px — page titles, card headings, gap verdicts
-   * Level 5  display  : 36px — big stat numbers
+   * Level 4  subhead  : 18/20px — card & section sub-headings, inst name
+   * Level 5  heading  : 24px — page titles, card headings, gap verdicts
+   * Level 6  display  : 36px — big stat numbers
    *
-   * 11 → 13 → 16 → 24 → 36 — each step is visually obvious.
+   * 11 → 13 → 16 → 18 → 20 → 24 → 36 — a continuous, predictable ramp.
    */
-  --text-xs:   0.6875rem; /* 11px — caption / eyebrow only   */
-  --text-sm:   0.8125rem; /* 13px — secondary / nav / meta   */
-  --text-base: 1rem;      /* 16px — primary body, list names */
-  --text-2xl:  1.5rem;    /* 24px — headings, verdicts       */
-  --text-3xl:  2.25rem;   /* 36px — display stat numbers     */
+  --text-xs:   0.6875rem; /* 11px — caption / eyebrow only        */
+  --text-sm:   0.8125rem; /* 13px — secondary / nav / meta        */
+  --text-base: 1rem;      /* 16px — primary body, list names      */
+  --text-lg:   1.125rem;  /* 18px — card / section subheadings    */
+  --text-xl:   1.25rem;   /* 20px — institution name, hover name  */
+  --text-2xl:  1.5rem;    /* 24px — headings, verdicts            */
+  --text-3xl:  2.25rem;   /* 36px — display stat numbers          */
 
   /* Font weights */
   --w-normal:   400;
@@ -57,8 +62,34 @@
   /* Topbar height */
   --topbar-h: 52px;
 
-  /* Transition */
-  --transition: 150ms ease;
+  /*
+   * Motion scale — four intents instead of ~6 ad-hoc durations.
+   *   fast : micro-feedback (icon hover, pill colour)
+   *   base : default hover / theme transitions
+   *   slow : entrances, dots growing
+   *   data : a value animating into place (score ring, breakdown bar fill)
+   */
+  --dur-fast: 120ms;
+  --dur:      150ms;
+  --dur-slow: 300ms;
+  --dur-data: 600ms;
+
+  /* --transition stays the canonical "hover" shorthand, now built from --dur */
+  --transition: var(--dur) ease;
+
+  /*
+   * Z-index scale — named stacking layers so literals don't drift.
+   *   base    : in-flow lift
+   *   overlay : graph legend / controls floating over the canvas
+   *   sticky  : the topbar
+   *   popover : hover card, skip-link, transient surfaces
+   *   modal   : the tour dialog + its scrim
+   */
+  --z-base:    1;
+  --z-overlay: 10;
+  --z-sticky:  100;
+  --z-popover: 200;
+  --z-modal:   1000;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -192,7 +223,7 @@ a:hover { color: var(--accent-h); }
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -420,6 +451,9 @@ a:hover { color: var(--accent-h); }
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: var(--sp-5);
+  /* Subtle lift so cards read as surfaces, not flat fills. --shadow-sm is tuned
+     per-theme (lighter alpha in light mode) so it stays soft, never heavy. */
+  box-shadow: var(--shadow-sm);
   transition: background var(--transition), border-color var(--transition);
 }
 .card + .card { margin-top: var(--sp-3); }
@@ -556,7 +590,7 @@ a:hover { color: var(--accent-h); }
   height: 5px;
   border-radius: var(--r-full);
   background: var(--accent);
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--dur-data) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Heavier than label — the number IS the point */
@@ -569,8 +603,23 @@ a:hover { color: var(--accent-h); }
   font-variant-numeric: tabular-nums;
 }
 
+/* Phones: the 190px label + long copy ("EU project participation") wrapped
+   raggedly beside the bar. Stack the label on its own line above a full-width
+   bar so every row reads cleanly. */
 @media (max-width: 480px) {
-  .breakdown-label { width: 120px; font-size: 0.6875rem; }
+  .breakdown-row {
+    flex-wrap: wrap;
+    column-gap: var(--sp-2);
+    row-gap: var(--sp-1);
+  }
+  .breakdown-label {
+    width: 100%;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  /* bar + value share the second line; bar takes the slack */
+  .breakdown-bar-bg { flex: 1; }
+  .breakdown-val { width: auto; }
 }
 
 /* "How this score works" disclosure — collapsed by default */
@@ -690,6 +739,8 @@ a:hover { color: var(--accent-h); }
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: var(--sp-4);
+  /* Same lift as .card so the gap grid sits on one depth plane */
+  box-shadow: var(--shadow-sm);
 }
 
 .gap-card-title {
@@ -740,7 +791,7 @@ a:hover { color: var(--accent-h); }
   position: absolute;
   top: var(--sp-2);
   left: var(--sp-2);
-  z-index: var(--z-popover, 200);
+  z-index: var(--z-popover);
   width: auto;
   height: auto;
   max-width: 320px;
@@ -832,9 +883,10 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   line-height: var(--leading-normal);
 }
 
-/* Section heading — Level 4 (24px) */
+/* Section / card sub-heading — Level 4 (20px). Sits below the 24px page title
+   so an opened institution name no longer reads at page-title weight. */
 .section-title {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: var(--w-semibold);
   color: var(--text-1);
   letter-spacing: -0.02em;
@@ -874,11 +926,13 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   to   { opacity: 1; }
 }
 
-.fade-in  { animation: fadeIn     0.18s ease both; }
-.fade-in-fast { animation: fadeInFast 0.12s ease both; }
+/* Entrances use --dur (base); the bare fast fade uses --dur-fast. Stagger
+   delays below stay as raw small offsets — they're rhythm, not durations. */
+.fade-in  { animation: fadeIn     var(--dur) ease both; }
+.fade-in-fast { animation: fadeInFast var(--dur-fast) ease both; }
 
 /* Stagger children in lists */
-.inst-row { animation: fadeIn 0.15s ease both; }
+.inst-row { animation: fadeIn var(--dur) ease both; }
 .inst-row:nth-child(1)  { animation-delay: 0.02s; }
 .inst-row:nth-child(2)  { animation-delay: 0.04s; }
 .inst-row:nth-child(3)  { animation-delay: 0.06s; }
@@ -886,7 +940,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .inst-row:nth-child(5)  { animation-delay: 0.10s; }
 .inst-row:nth-child(n+6){ animation-delay: 0.12s; }
 
-.gap-card { animation: fadeIn 0.18s ease both; }
+.gap-card { animation: fadeIn var(--dur) ease both; }
 .gap-card:nth-child(1) { animation-delay: 0.03s; }
 .gap-card:nth-child(2) { animation-delay: 0.06s; }
 .gap-card:nth-child(3) { animation-delay: 0.09s; }

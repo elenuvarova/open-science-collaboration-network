@@ -35,7 +35,7 @@ export default function ScoreRing({ score, size = SIZE }) {
           strokeDasharray={`${CIRC * scale} ${CIRC * scale}`}
           strokeDashoffset={offset * scale}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s" }}
+          style={{ transition: "stroke-dashoffset var(--dur-data) ease, stroke var(--dur-slow)" }}
         />
       </svg>
       <div aria-hidden="true" style={{

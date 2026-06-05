@@ -3,8 +3,11 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from db import Base, db_kind, engine
+from ratelimit import limiter
 from routers import brief, graph, health, institutions, search, topics
 from scheduler import start_scheduler
 
@@ -14,6 +17,10 @@ import models  # noqa: E402,F401
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Open Science Collaboration Network")
+
+# Per-IP rate limiting (slowapi). Endpoints opt in via @limiter.limit(...).
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(health.router)
 app.include_router(topics.router)

@@ -137,7 +137,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
               fontSize: "var(--text-xs)",
               fontWeight: mode === m ? "var(--w-semibold)" : "normal",
               cursor: "pointer",
-              transition: "background 120ms, color 120ms",
+              transition: "background var(--dur-fast), color var(--dur-fast)",
             }}>
               {m === "network" ? "Full network" : `My Consortium${consortium.length ? ` (${consortium.length})` : ""}`}
             </button>

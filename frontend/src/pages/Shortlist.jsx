@@ -25,6 +25,28 @@ function scoreClass(s) {
   return s >= 70 ? "score-high" : s >= 50 ? "score-mid" : "score-low";
 }
 
+// Institution names come from upstream open data, so treat every exported cell as
+// untrusted: neutralize spreadsheet formula injection (a leading = + - @ or control
+// char can execute in Excel/Sheets) and quote/escape CSV-special characters.
+function csvCell(value) {
+  let s = value == null ? "" : String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function downloadCsv(filename, header, rows) {
+  const body = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([body], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+const HOVER_CARD_W = 240; // keep in sync with the card's `width` below
+
 function HoverCard({ inst, anchor }) {
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const cardRef = useRef(null);
@@ -34,8 +56,15 @@ function HoverCard({ inst, anchor }) {
     const rect = anchor.getBoundingClientRect();
     const cardH = cardRef.current.offsetHeight || 200;
     const winH = window.innerHeight;
+    const winW = window.innerWidth;
     const top = Math.min(rect.top, winH - cardH - 16);
-    setPos({ top, left: rect.right + 12 });
+    // Prefer the right of the row; on full-width rows that overflows the viewport,
+    // so flip to the left side. Clamp to ≥8px so it's never clipped off-screen.
+    const wouldOverflowRight = rect.right + 12 + HOVER_CARD_W > winW;
+    const left = wouldOverflowRight
+      ? Math.max(8, rect.left - 12 - HOVER_CARD_W)
+      : rect.right + 12;
+    setPos({ top, left });
   }, [anchor]);
 
   if (!inst || !anchor) return null;
@@ -50,30 +79,30 @@ function HoverCard({ inst, anchor }) {
         position: "fixed",
         top: pos.top,
         left: pos.left,
-        zIndex: 200,
+        zIndex: "var(--z-popover)",
         background: "var(--surface)",
         border: "1px solid var(--border)",
         borderRadius: "var(--r-xl)",
         padding: "var(--sp-4)",
-        width: 240,
+        width: HOVER_CARD_W,
         boxShadow: "var(--shadow-lg)",
         pointerEvents: "none",
-        animation: "fadeIn 0.12s ease",
+        animation: "fadeIn var(--dur-fast) ease",
       }}
     >
       <div style={{ display: "flex", gap: "var(--sp-3)", alignItems: "center", marginBottom: "var(--sp-3)" }}>
         <ScoreRing score={inst.partner_fit_score} size={52} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--w-semibold)", lineHeight: "var(--leading-snug)", color: "var(--text-1)" }}>
+          <div style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", lineHeight: "var(--leading-snug)", color: "var(--text-1)" }}>
             {inst.name}
           </div>
-          <div style={{ marginTop: 4 }}>
+          <div style={{ marginTop: "var(--sp-1)" }}>
             <TypeBadge type={inst.type} />
           </div>
         </div>
       </div>
       {entries.map(([k, v]) => (
-        <div key={k} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: 4 }}>
+        <div key={k} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: "var(--sp-1)" }}>
           <div style={{ flex: 1, height: 4, background: "var(--border)", borderRadius: "var(--r-full)", overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${Math.min((v / (SCORE_MAX[k] || 30)) * 100, 100)}%`, background: "var(--accent)", borderRadius: "var(--r-full)" }} />
           </div>
@@ -146,7 +175,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", flex: 1 }}>
               {consortium.map(inst => (
                 <button key={inst.id} className="tag" aria-label={`Remove ${inst.name} from consortium`}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "var(--sp-1)" }}
                   onClick={() => onToggleConsortium(inst)}>
                   {inst.name} ×
                 </button>
@@ -155,17 +184,10 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => {
-                const header = "Rank,Name,Country,Type,Score";
                 const rows = consortium.map((inst, i) =>
-                  [i + 1, `"${inst.name.replace(/"/g, '""')}"`, inst.country || "", inst.type || "",
-                   inst.partner_fit_score.toFixed(0)].join(",")
+                  [i + 1, inst.name, inst.country || "", inst.type || "", inst.partner_fit_score.toFixed(0)]
                 );
-                const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = "consortium.csv";
-                a.click();
-                URL.revokeObjectURL(a.href);
+                downloadCsv("consortium.csv", ["Rank", "Name", "Country", "Type", "Score"], rows);
               }}
             >
               Export consortium
@@ -201,17 +223,11 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => {
-              const header = "Rank,Name,Country,Type,Score,EU Projects,Works";
               const rows = list.slice(0, 50).map((inst, i) =>
-                [i + 1, `"${inst.name.replace(/"/g, '""')}"`, inst.country || "", inst.type || "",
-                 inst.partner_fit_score.toFixed(0), inst.eu_projects, inst.recent_works].join(",")
+                [i + 1, inst.name, inst.country || "", inst.type || "",
+                 inst.partner_fit_score.toFixed(0), inst.eu_projects, inst.recent_works]
               );
-              const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = "partners.csv";
-              a.click();
-              URL.revokeObjectURL(a.href);
+              downloadCsv("partners.csv", ["Rank", "Name", "Country", "Type", "Score", "EU Projects", "Works"], rows);
             }}
           >
             Export CSV
@@ -268,7 +284,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             <span className="inst-rank">{i + 1}</span>
             <div className="inst-info">
               <div className="inst-name">{inst.name}</div>
-              <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: 3 }}>
+              <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: "var(--sp-1)" }}>
                 <TypeBadge type={inst.type} />
                 <span>{inst.country}</span>
                 <span>·</span>
@@ -291,9 +307,9 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                   border: "1px solid var(--border)",
                   background: inConsortium ? "var(--accent)" : "none",
                   color: inConsortium ? "var(--on-accent)" : "var(--text-3)",
-                  fontSize: 16, lineHeight: 1,
+                  fontSize: "var(--text-base)", lineHeight: 1,
                   cursor: "pointer", flexShrink: 0,
-                  transition: "background 120ms, color 120ms",
+                  transition: "background var(--dur-fast), color var(--dur-fast)",
                 }}
               >
                 {inConsortium ? "✓" : "+"}

@@ -173,7 +173,7 @@ export default function App() {
                 </select>
                 <span style={{
                   position: "absolute", right: "var(--sp-2)", pointerEvents: "none",
-                  color: "var(--text-3)", fontSize: "0.85rem", lineHeight: 1,
+                  color: "var(--text-3)", fontSize: "var(--text-sm)", lineHeight: 1,
                 }}>▾</span>
               </span>
             </label>
@@ -192,8 +192,8 @@ export default function App() {
         {!topicId && !topicsError && <div className="spinner">Loading topics…</div>}
         {!topicId && topicsError && (
           <div className="card" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
-            <div style={{ fontSize: "var(--text-2xl)", marginBottom: "var(--sp-2)" }} aria-hidden="true">⚠️</div>
-            <div style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-2)" }}>
+            <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-2)" }} aria-hidden="true">⚠️</div>
+            <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-2)" }}>
               Couldn’t reach the server
             </div>
             <p className="muted" style={{ marginBottom: "var(--sp-4)" }}>

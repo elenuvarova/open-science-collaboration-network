@@ -18,7 +18,7 @@ export default function GraphLegend({ communities = [] }) {
       background: "var(--surface)", border: "1px solid var(--border)",
       borderRadius: "var(--r-md)", padding: "var(--sp-3)",
       display: "flex", flexDirection: "column", gap: "var(--sp-1)",
-      zIndex: 10, backdropFilter: "blur(4px)",
+      zIndex: "var(--z-overlay)", backdropFilter: "blur(4px)",
       maxWidth: 180,
     }}>
       <button

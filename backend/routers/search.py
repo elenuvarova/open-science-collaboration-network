@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
 from models import Work, WorkEmbedding
+from ratelimit import limiter
 from schemas import WorkSearchResult
 
 router = APIRouter(prefix="/api/search", tags=["search"])
@@ -21,8 +22,17 @@ def _get_model():
     return _model
 
 
+# Embedding search loads a topic's full embedding set and runs a matmul per call,
+# so it's the most expensive endpoint — throttle it per client IP (M1).
 @router.get("", response_model=list[WorkSearchResult])
-def search_works(q: str, topic: int, limit: int = 10, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def search_works(
+    request: Request,
+    q: str,
+    topic: int,
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
     if not q.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
 

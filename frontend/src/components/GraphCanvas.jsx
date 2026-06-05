@@ -78,7 +78,9 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         "text-background-padding": "2px",
         "text-background-shape": "round-rectangle",
         "transition-property": "background-opacity, border-width, opacity",
-        "transition-duration": "180ms",
+        // Node hover/select feedback — cytoscape parses this string itself and
+        // can't read CSS var(), so it mirrors --dur (150ms) by hand.
+        "transition-duration": "150ms",
         "min-zoomed-font-size": 6,
       },
     },

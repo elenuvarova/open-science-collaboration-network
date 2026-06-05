@@ -5,8 +5,8 @@ export default function EmptyState({ icon = "🔍", title, body, action }) {
       justifyContent: "center", padding: "var(--sp-12) var(--sp-6)",
       textAlign: "center", gap: "var(--sp-3)",
     }}>
-      <div style={{ fontSize: "2.5rem", lineHeight: 1 }} aria-hidden="true">{icon}</div>
-      <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
+      <div style={{ fontSize: "var(--text-3xl)", lineHeight: 1 }} aria-hidden="true">{icon}</div>
+      <p style={{ fontSize: "var(--text-lg)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
         {title}
       </p>
       {body && (

@@ -2,7 +2,7 @@ function SkeletonRow({ wide }) {
   return (
     <div className="inst-row" style={{ cursor: "default", pointerEvents: "none" }}>
       <div className="skel" style={{ width: 16, height: 12, borderRadius: "var(--r-sm)" }} />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
         <div className="skel" style={{ height: 13, width: wide ? "60%" : "40%", borderRadius: "var(--r-sm)" }} />
         <div className="skel" style={{ height: 10, width: "30%", borderRadius: "var(--r-sm)" }} />
       </div>

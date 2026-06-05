@@ -20,7 +20,7 @@ function CopyButton({ text }) {
         fontSize: "var(--text-xs)",
         color: "var(--text-3)",
         cursor: "pointer",
-        transition: "color 120ms, border-color 120ms",
+        transition: "color var(--dur-fast), border-color var(--dur-fast)",
       }}
       onMouseEnter={e => { e.currentTarget.style.color = "var(--text-1)"; e.currentTarget.style.borderColor = "var(--text-3)"; }}
       onMouseLeave={e => { e.currentTarget.style.color = "var(--text-3)"; e.currentTarget.style.borderColor = "var(--border)"; }}
@@ -39,7 +39,7 @@ function BriefText({ text }) {
     if (line.startsWith("## ")) {
       elements.push(
         <h2 key={key++} style={{
-          fontSize: "var(--text-base)",
+          fontSize: "var(--text-lg)",
           fontWeight: "var(--w-semibold)",
           color: "var(--text-1)",
           marginTop: "var(--sp-5)",
@@ -96,7 +96,7 @@ export default function BriefView({ topicId }) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "var(--sp-8) var(--sp-6)" }}>
         <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)" }} aria-hidden="true">🤖</div>
-        <div style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", color: "var(--text-1)", marginBottom: "var(--sp-2)" }}>
+        <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--w-semibold)", color: "var(--text-1)", marginBottom: "var(--sp-2)" }}>
           The strategy brief isn’t ready yet
         </div>
         <div style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)", maxWidth: 340, margin: "0 auto" }}>

@@ -1,20 +1,23 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
 from models import CollaborationEdge, Institution, InstitutionMetric
+from ratelimit import limiter
 from schemas import GraphEdge, GraphNode, GraphOut
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
 
 @router.get("", response_model=GraphOut)
+@limiter.limit("60/minute")
 def get_graph(
+    request: Request,
     topic: Optional[int] = None,
     type: Optional[str] = None,
-    limit: int = 300,
+    limit: int = Query(300, ge=1, le=1000),
     db: Session = Depends(get_db),
 ):
     iq = (

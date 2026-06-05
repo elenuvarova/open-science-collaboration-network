@@ -3,5 +3,6 @@ uvicorn[standard]==0.34.0
 SQLAlchemy==2.0.36
 psycopg[binary]==3.3.4
 python-dotenv==1.0.1
+slowapi==0.1.9
 fastembed==0.4.1
 numpy>=1.26
