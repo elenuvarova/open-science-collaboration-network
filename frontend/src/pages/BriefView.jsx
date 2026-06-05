@@ -38,7 +38,7 @@ function BriefText({ text }) {
   for (const line of lines) {
     if (line.startsWith("## ")) {
       elements.push(
-        <h3 key={key++} style={{
+        <h2 key={key++} style={{
           fontSize: "var(--text-base)",
           fontWeight: "var(--w-semibold)",
           color: "var(--text-1)",
@@ -46,7 +46,7 @@ function BriefText({ text }) {
           marginBottom: "var(--sp-2)",
         }}>
           {line.slice(3)}
-        </h3>
+        </h2>
       );
     } else if (line.trim() === "") {
       elements.push(<div key={key++} style={{ height: "var(--sp-2)" }} />);
@@ -95,13 +95,12 @@ export default function BriefView({ topicId }) {
   if (missing) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "var(--sp-8) var(--sp-6)" }}>
-        <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)" }}>🤖</div>
+        <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)" }} aria-hidden="true">🤖</div>
         <div style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", color: "var(--text-1)", marginBottom: "var(--sp-2)" }}>
-          Brief not yet generated
+          The strategy brief isn’t ready yet
         </div>
-        <div style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)" }}>
-          Run the ETL with <code style={{ fontSize: "var(--text-xs)", background: "var(--border)", padding: "2px 6px", borderRadius: "var(--r-sm)" }}>GROQ_API_KEY</code> set
-          to generate an AI strategy brief for this topic.
+        <div style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)", maxWidth: 340, margin: "0 auto" }}>
+          We haven’t generated an AI strategy brief for this topic yet. Check back shortly, or explore the partner shortlist and network map in the meantime.
         </div>
       </div>
     );

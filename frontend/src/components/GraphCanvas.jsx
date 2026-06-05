@@ -5,22 +5,22 @@ import fcose from "cytoscape-fcose";
 import cola from "cytoscape-cola";
 import GraphLegend from "./GraphLegend";
 import GraphControls from "./GraphControls";
+import { nodeColor } from "./communityColors";
 
 cytoscape.use(fcose);
 cytoscape.use(cola);
 
-const COMMUNITY_COLORS = [
-  "#4f8ef7", "#4ade80", "#fbbf24", "#f87171", "#a78bfa",
-  "#34d399", "#fb923c", "#e879f9", "#38bdf8", "#facc15",
-];
-
-function nodeColor(communityId) {
-  return COMMUNITY_COLORS[(communityId ?? 0) % COMMUNITY_COLORS.length];
-}
-
 export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   const cyRef = useRef(null);
   const [ready, setReady] = useState(false);
+
+  // Resolve theme tokens from CSS variables so the graph chrome flips with the
+  // light/dark toggle. App re-renders on toggle, so this recomputes each render.
+  const css = getComputedStyle(document.documentElement);
+  const v = (name, fallback) => (css.getPropertyValue(name).trim() || fallback);
+  const textColor = v("--text-1", "#f1f5f9");
+  const bgColor = v("--bg", "#0f1117");
+  const borderColor = v("--border", "#2d3748");
 
   // Derive unique communities for legend
   const communities = [...new Map(
@@ -66,15 +66,15 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         height: "data(size)",
         "background-color": "data(color)",
         "background-opacity": 0.88,
-        color: "#f1f5f9",
+        color: textColor,
         "font-size": 8,
         "text-valign": "bottom",
         "text-margin-y": 4,
         "text-max-width": 90,
         "text-wrap": "ellipsis",
         "border-width": 0,
-        "text-background-color": "#0f1117",
-        "text-background-opacity": 0.6,
+        "text-background-color": bgColor,
+        "text-background-opacity": 0.85,
         "text-background-padding": "2px",
         "text-background-shape": "round-rectangle",
         "transition-property": "background-opacity, border-width, opacity",
@@ -90,7 +90,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       selector: "node:selected",
       style: {
         "border-width": 3,
-        "border-color": "#ffffff",
+        "border-color": textColor,
         "background-opacity": 1,
         "font-size": 10,
       },
@@ -103,7 +103,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       selector: "edge",
       style: {
         width: 1,
-        "line-color": "#2d3748",
+        "line-color": borderColor,
         opacity: 0.4,
         "curve-style": "straight",
       },
@@ -130,7 +130,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       style: {
         "background-opacity": 1,
         "border-width": 2,
-        "border-color": "#ffffff55",
+        "border-color": textColor,
         "font-size": 10,
         opacity: 1,
       },
@@ -153,12 +153,15 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy || !ready || !nodes.length) return;
+    // Honour prefers-reduced-motion: run a one-shot settle instead of the
+    // continuous force animation (WCAG 2.3.3). Drag still works after settling.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const sim = cy.layout({
       name: "cola",
-      infinite: true,
+      infinite: !reduce,
       fit: false,
       centerGraph: true,
-      animate: true,
+      animate: !reduce,
       randomize: true,
       avoidOverlap: true,
       handleDisconnected: true,
@@ -203,8 +206,18 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     );
   }
 
+  // Keyboard/AT alternative — the canvas itself isn't navigable, so mirror each
+  // node as a focusable button that opens the same profile. Capped to keep the
+  // list short.
+  const SR_CAP = 60;
+  const srNodes = nodes.slice(0, SR_CAP);
+
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div
+      role="img"
+      aria-label={`Collaboration network: ${nodes.length} institutions across ${communities.length} clusters`}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       <CytoscapeComponent
         elements={elements}
         stylesheet={stylesheet}
@@ -212,6 +225,23 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         style={{ width: "100%", height: "100%" }}
         cy={(cy) => { cyRef.current = cy; setReady(true); }}
       />
+      <ul className="sr-only">
+        {srNodes.map((n) => (
+          <li key={n.id}>
+            <button onClick={() => onNodeClickRef.current?.({
+              id: String(n.id),
+              label: n.label,
+              type: n.type,
+              community: n.community_id ?? 0,
+            })}>
+              {n.label} — cluster {(n.community_id ?? 0) + 1}
+            </button>
+          </li>
+        ))}
+        {nodes.length > SR_CAP && (
+          <li>{nodes.length - SR_CAP} more institutions not listed.</li>
+        )}
+      </ul>
       <GraphLegend communities={communities} />
       <GraphControls cyRef={cyRef} />
     </div>

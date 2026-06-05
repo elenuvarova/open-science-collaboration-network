@@ -14,7 +14,11 @@ export default function ScoreRing({ score, size = SIZE }) {
   const offset = CIRC * (1 - Math.min(score, 100) / 100);
 
   return (
-    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+    <div
+      role="img"
+      aria-label={`Partner fit score ${Math.round(score)} out of 100`}
+      style={{ position: "relative", width: size, height: size, flexShrink: 0 }}
+    >
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
         {/* Track */}
         <circle
@@ -34,7 +38,7 @@ export default function ScoreRing({ score, size = SIZE }) {
           style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s" }}
         />
       </svg>
-      <div style={{
+      <div aria-hidden="true" style={{
         position: "absolute", inset: 0,
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
@@ -49,7 +53,7 @@ export default function ScoreRing({ score, size = SIZE }) {
         }}>
           {Math.round(score)}
         </span>
-        <span style={{ fontSize: "0.55rem", color: "var(--text-3)", lineHeight: 1.2 }}>/ 100</span>
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: 1.2 }}>/ 100</span>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { getInstitution } from "../api";
 import ScoreCard from "../components/ScoreCard";
 import ScoreRing from "../components/ScoreRing";
 import TypeBadge from "../components/TypeBadge";
+import { SCORE_MAX, SCORE_LABELS, SCORE_DESCRIPTIONS } from "../components/scoreMeta";
 
 export default function InstitutionProfile({ id, topicId, onBack }) {
   const [inst, setInst] = useState(null);
@@ -68,6 +69,22 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
 
         <div className="divider" />
         <ScoreCard score={inst.partner_fit_score} breakdown={inst.score_breakdown} />
+
+        {/* Transparency: how the six weighted dimensions sum to the score.
+            Collapsed by default; native <details> so it works without JS. */}
+        <details className="score-help">
+          <summary>How this score works</summary>
+          <ul className="score-help-list">
+            {Object.keys(SCORE_LABELS).map((key) => (
+              <li key={key}>
+                <span className="score-help-dim">
+                  {SCORE_LABELS[key]} — {SCORE_MAX[key]}%
+                </span>
+                <span className="score-help-desc">{SCORE_DESCRIPTIONS[key]}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       </div>
     </div>
   );

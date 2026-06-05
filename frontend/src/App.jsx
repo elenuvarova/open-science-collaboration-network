@@ -28,28 +28,104 @@ function useTheme() {
   return [theme, toggle];
 }
 
+const CONSORTIUM_KEY = "consortium_by_topic";
+
+function loadConsortia() {
+  try {
+    const raw = localStorage.getItem(CONSORTIUM_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+const VALID_PAGES = new Set(PAGES.map(p => p.id));
+
+// Hash format: #/<page>/<topicId>[/<institutionId>] — e.g. #/shortlist/3/445.
+// All parts optional and guarded so a malformed hash never throws. The third
+// segment deep-links an open institution profile (only used on the shortlist).
+function parseHash() {
+  const m = (window.location.hash || "").match(/^#\/([a-z]+)(?:\/(\d+))?(?:\/(\d+))?/i);
+  if (!m) return {};
+  const page = VALID_PAGES.has(m[1]) ? m[1] : undefined;
+  const topicId = m[2] != null ? Number(m[2]) : undefined;
+  const instId = m[3] != null ? Number(m[3]) : undefined;
+  return { page, topicId, instId };
+}
+
 export default function App() {
   const [topics, setTopics] = useState([]);
   const [topicId, setTopicId] = useState(null);
-  const [page, setPage] = useState("shortlist");
+  const [topicsError, setTopicsError] = useState(false);
+  const [page, setPage] = useState(() => parseHash().page || "shortlist");
+  // The institution profile open on the shortlist, deep-linked via the hash.
+  // Only restore it when the hash actually points at the shortlist.
+  const [profileId, setProfileId] = useState(() => {
+    const h = parseHash();
+    return (h.page ?? "shortlist") === "shortlist" ? (h.instId ?? null) : null;
+  });
   const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
   const [theme, toggleTheme] = useTheme();
-  const [consortium, setConsortium] = useState([]);
 
-  function toggleConsortium(inst) {
-    setConsortium(prev =>
-      prev.find(i => i.id === inst.id)
-        ? prev.filter(i => i.id !== inst.id)
-        : [...prev, inst]
-    );
-  }
+  // Consortium is scoped per topic (an org's Partner Fit Score only means
+  // something within the topic it was matched on) and persisted to localStorage
+  // so it survives a page refresh — it's the user's only work product.
+  const [consortiumByTopic, setConsortiumByTopic] = useState(loadConsortia);
+  const consortium = (topicId != null && consortiumByTopic[topicId]) || [];
 
   useEffect(() => {
-    getTopics().then((t) => {
-      setTopics(t);
-      if (t.length) setTopicId(t[0].id);
+    try { localStorage.setItem(CONSORTIUM_KEY, JSON.stringify(consortiumByTopic)); }
+    catch { /* quota / private mode — non-fatal */ }
+  }, [consortiumByTopic]);
+
+  function toggleConsortium(inst) {
+    if (topicId == null) return;
+    setConsortiumByTopic(prev => {
+      const cur = prev[topicId] || [];
+      const next = cur.find(i => i.id === inst.id)
+        ? cur.filter(i => i.id !== inst.id)
+        : [...cur, inst];
+      return { ...prev, [topicId]: next };
     });
-  }, []);
+  }
+
+  function clearConsortium() {
+    if (topicId == null) return;
+    setConsortiumByTopic(prev => ({ ...prev, [topicId]: [] }));
+  }
+
+  function loadTopics() {
+    setTopicsError(false);
+    getTopics()
+      .then((t) => {
+        setTopics(t);
+        if (t.length) {
+          // Honour a topic from the URL hash if it exists; otherwise default to first.
+          const wanted = parseHash().topicId;
+          const match = wanted != null && t.find(x => x.id === wanted);
+          setTopicId(match ? wanted : t[0].id);
+          // A deep-linked profile only makes sense under its own topic — if the
+          // hashed topic didn't resolve, drop the stale profile so it can't render
+          // an institution that belongs to a different topic.
+          if (!match) setProfileId(null);
+        }
+      })
+      .catch(() => setTopicsError(true));
+  }
+
+  useEffect(() => { loadTopics(); }, []);
+
+  // Keep the URL hash in sync with page + topic (+ open profile on the shortlist)
+  // so refresh restores the view and it's shareable. replaceState avoids polluting
+  // browser history on every change.
+  useEffect(() => {
+    if (topicId == null) return;
+    const base = `#/${page}/${topicId}`;
+    const next = page === "shortlist" && profileId != null ? `${base}/${profileId}` : base;
+    if (window.location.hash !== next) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [page, topicId, profileId]);
 
   const isWide = page === "network";
 
@@ -58,16 +134,20 @@ export default function App() {
       {showTour && <Tour onClose={() => setShowTour(false)} />}
 
       <header className="topbar">
-        <span className="topbar-title">Open Science Collaboration Network</span>
+        <h1 className="topbar-title">Open Science Collaboration Network</h1>
 
         <nav>
           {PAGES.map((p) => (
             <button
               key={p.id}
               className={`nav-btn ${page === p.id ? "active" : ""}`}
+              aria-current={page === p.id ? "page" : undefined}
               onClick={() => setPage(p.id)}
             >
               {p.label}
+              {p.id === "gaps" && consortium.length > 0 && (
+                <span className="nav-badge">{consortium.length}</span>
+              )}
             </button>
           ))}
         </nav>
@@ -84,7 +164,7 @@ export default function App() {
                 <select
                   className="topic-select"
                   value={topicId ?? ""}
-                  onChange={(e) => setTopicId(Number(e.target.value))}
+                  onChange={(e) => { setTopicId(Number(e.target.value)); setProfileId(null); }}
                   style={{ paddingRight: "var(--sp-6)", appearance: "none", WebkitAppearance: "none" }}
                 >
                   {topics.map((t) => (
@@ -109,10 +189,22 @@ export default function App() {
       </header>
 
       <main key={page} className={`fade-in ${isWide ? "page-wide" : "page"}`}>
-        {!topicId && <div className="spinner">Loading topics…</div>}
-        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} />}
+        {!topicId && !topicsError && <div className="spinner">Loading topics…</div>}
+        {!topicId && topicsError && (
+          <div className="card" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
+            <div style={{ fontSize: "var(--text-2xl)", marginBottom: "var(--sp-2)" }} aria-hidden="true">⚠️</div>
+            <div style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-2)" }}>
+              Couldn’t reach the server
+            </div>
+            <p className="muted" style={{ marginBottom: "var(--sp-4)" }}>
+              The service may be waking up. Give it a moment and try again.
+            </p>
+            <button className="btn btn-primary" onClick={loadTopics}>Retry</button>
+          </div>
+        )}
+        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} />}
         {topicId && page === "network"   && <NetworkMap topicId={topicId} />}
-        {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={() => setConsortium([])} />}
+        {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
       </main>

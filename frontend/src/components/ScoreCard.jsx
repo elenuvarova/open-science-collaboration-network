@@ -1,11 +1,4 @@
-const LABELS = {
-  topic_relevance:          "Topic relevance",
-  publication_activity:     "Publication activity",
-  eu_project_participation: "EU project participation",
-  network_centrality:       "Network centrality",
-  country_diversity:        "Country diversity",
-  recent_activity:          "Recent activity",
-};
+import { SCORE_MAX, SCORE_LABELS } from "./scoreMeta";
 
 export default function ScoreCard({ score, breakdown = {} }) {
   const cls = score >= 70 ? "score-high" : score >= 50 ? "score-mid" : "score-low";
@@ -18,9 +11,9 @@ export default function ScoreCard({ score, breakdown = {} }) {
         <span className="eyebrow">Partner Fit Score</span>
       </div>
       <div className="breakdown">
-        {Object.entries(LABELS).map(([key, label]) => {
+        {Object.entries(SCORE_LABELS).map(([key, label]) => {
           const val = breakdown[key] ?? 0;
-          const max = key === "topic_relevance" ? 30 : key === "publication_activity" ? 20 : key === "eu_project_participation" ? 20 : key === "network_centrality" ? 15 : key === "country_diversity" ? 10 : 5;
+          const max = SCORE_MAX[key];
           const pct = Math.min((val / max) * 100, 100);
           return (
             <div className="breakdown-row" key={key}>
@@ -28,7 +21,7 @@ export default function ScoreCard({ score, breakdown = {} }) {
               <div className="breakdown-bar-bg">
                 <div className="breakdown-bar" style={{ width: `${pct}%` }} />
               </div>
-              <span className="breakdown-val">{val.toFixed(1)}</span>
+              <span className="breakdown-val">{val.toFixed(1)} / {max}</span>
             </div>
           );
         })}

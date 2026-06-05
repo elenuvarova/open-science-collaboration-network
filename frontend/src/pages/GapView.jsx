@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getInstitutions } from "../api";
+import EmptyState from "../components/EmptyState";
 
 const ROLES = [
   { key: "research",   label: "Research lead",        types: ["education", "university"] },
@@ -72,12 +73,21 @@ function GapGrid({ institutions, isConsortium = false }) {
 export default function GapView({ topicId, consortium = [], onClearConsortium }) {
   const [institutions, setInstitutions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [mode, setMode] = useState("network");
 
   useEffect(() => {
     if (!topicId) return;
-    getInstitutions({ topic: topicId, limit: 200 }).then(setInstitutions).finally(() => setLoading(false));
-  }, [topicId]);
+    setLoading(true);
+    setError(false);
+    let cancelled = false;
+    getInstitutions({ topic: topicId, limit: 200 })
+      .then((d) => { if (!cancelled) setInstitutions(d); })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [topicId, reloadKey]);
 
   // Auto-switch to consortium view when user starts adding orgs
   useEffect(() => {
@@ -99,6 +109,15 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
     </div>
   );
 
+  if (error && consortium.length === 0) return (
+    <EmptyState
+      icon="⚠️"
+      title="Couldn’t load network data"
+      body="The server didn’t respond — it may be waking up. Give it a moment and try again."
+      action={<button className="btn btn-primary btn-sm" onClick={() => setReloadKey(k => k + 1)}>Retry</button>}
+    />
+  );
+
   const activeInstitutions = mode === "consortium" ? consortium : institutions;
   const label = mode === "consortium"
     ? `${consortium.length} selected · go to Partner Shortlist to add/remove`
@@ -109,12 +128,12 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
       <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", marginBottom: "var(--sp-4)", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "var(--sp-1)", background: "var(--border)", borderRadius: "var(--r-md)", padding: 2 }}>
           {["network", "consortium"].map(m => (
-            <button key={m} onClick={() => setMode(m)} style={{
-              padding: "var(--sp-1) var(--sp-3)",
+            <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m} style={{
+              padding: "var(--sp-2) var(--sp-3)",
               borderRadius: "var(--r-sm)",
               border: "none",
               background: mode === m ? "var(--surface)" : "none",
-              color: mode === m ? "var(--text-1)" : "var(--text-3)",
+              color: mode === m ? "var(--text-1)" : "var(--text-2)",
               fontSize: "var(--text-xs)",
               fontWeight: mode === m ? "var(--w-semibold)" : "normal",
               cursor: "pointer",

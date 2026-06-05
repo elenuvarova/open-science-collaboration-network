@@ -2,6 +2,7 @@ export default function GraphControls({ cyRef }) {
   const btn = (label, title, onClick) => (
     <button
       title={title}
+      aria-label={title}
       onClick={onClick}
       style={{
         width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",

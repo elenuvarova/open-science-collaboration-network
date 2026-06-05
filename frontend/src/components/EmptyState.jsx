@@ -1,11 +1,11 @@
-export default function EmptyState({ icon = "🔍", title, body }) {
+export default function EmptyState({ icon = "🔍", title, body, action }) {
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", padding: "var(--sp-12) var(--sp-6)",
       textAlign: "center", gap: "var(--sp-3)",
     }}>
-      <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>{icon}</div>
+      <div style={{ fontSize: "2.5rem", lineHeight: 1 }} aria-hidden="true">{icon}</div>
       <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
         {title}
       </p>
@@ -14,6 +14,7 @@ export default function EmptyState({ icon = "🔍", title, body }) {
           {body}
         </p>
       )}
+      {action && <div style={{ marginTop: "var(--sp-2)" }}>{action}</div>}
     </div>
   );
 }

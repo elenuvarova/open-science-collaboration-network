@@ -17,3 +17,6 @@ venv/
 *.egg-info/
 etl/.cache/
 backend/public/
+
+# Playwright MCP scratch output (snapshots, console logs)
+.playwright-mcp/
