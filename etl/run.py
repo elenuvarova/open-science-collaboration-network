@@ -49,8 +49,8 @@ def run_topic(topic_cfg: dict):
     load.init_schema()
 
     # ── PHASE 1 — gather everything in memory (network + CPU, NO DB session) ───
-    # CORDIS download + parsing takes many minutes. Holding an open Neon
-    # transaction idle across that gap gets the SSL connection dropped
+    # CORDIS download + parsing takes many minutes. Holding an open Postgres
+    # transaction idle across that gap can get the connection dropped
     # ("connection closed unexpectedly"). So we open the DB session only in
     # phase 2 and do every write in one tight burst.
 

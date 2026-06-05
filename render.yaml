@@ -1,6 +1,6 @@
-# FastAPI web service. DATABASE_URL points at an external Neon Postgres
-# (free, never expires, pgvector) — set it as a secret in the Render dashboard,
-# NOT here. The ETL runs in GitHub Actions, not on Render.
+# Optional Render deploy descriptor (the project deploys on Coolify; this is a
+# fallback). DATABASE_URL points at an external Postgres — set it as a secret in
+# the Render dashboard, NOT here. The ETL runs in-process inside the app.
 services:
   - type: web
     name: ai-workshop-web
@@ -14,4 +14,4 @@ services:
       - key: PORT
         value: 8000
       - key: DATABASE_URL
-        sync: false # set in dashboard from your Neon connection string
+        sync: false # set in dashboard from your Postgres connection string

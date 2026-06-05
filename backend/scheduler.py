@@ -1,9 +1,9 @@
 """In-process ETL scheduler.
 
 Replaces the old GitHub Actions cron (`.github/workflows/etl.yml`) that ran the
-ETL weekly against Neon. Now the ETL ships INSIDE the prod image and runs in a
-background thread of the FastAPI process, writing to the container's own
-Postgres (the DATABASE_URL Coolify injects).
+ETL weekly against a managed cloud database. Now the ETL ships INSIDE the prod
+image and runs in a background thread of the FastAPI process, writing to the
+container's own Postgres (the DATABASE_URL Coolify injects).
 
 Design constraints:
   * Never block FastAPI startup or the event loop. The web app must bind the

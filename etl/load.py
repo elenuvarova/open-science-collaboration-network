@@ -1,4 +1,4 @@
-"""Write precomputed results into Postgres (Neon) / SQLite.
+"""Write precomputed results into Postgres (Coolify-internal) / SQLite.
 
 Functional upsert helpers used by both seed_sample.py (dev demo data) and the
 real Phase-2 pipeline (run.py). Idempotent on natural keys.
@@ -119,7 +119,7 @@ def add_edge(db, source_id, target_id, topic_id, type_, weight=1.0):
 
 # ── Bulk writers ──────────────────────────────────────────────────────────────
 # The per-row upsert helpers above flush/SELECT once per row — fine for the tiny
-# seed script, but against remote Neon that's thousands of round-trips (minutes)
+# seed script, but against a remote Postgres that's thousands of round-trips (minutes)
 # for one topic's ~3-4k institutions/metrics. The bulk writers below collapse
 # each hot loop into a handful of statements.
 

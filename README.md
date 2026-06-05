@@ -1,16 +1,16 @@
 # Open Science Collaboration Network
 
-A Python-powered intelligence platform that maps research-collaboration networks from open data (OpenAlex + CORDIS), scores potential partners, and reveals consortium gaps — so a team can **find the right research partners before writing the grant**. React frontend, FastAPI backend, a Python ETL pipeline, and PostgreSQL. Runs locally with zero setup (SQLite built in) and **deploys for $0** (Neon + GitHub Actions + Render + Vercel).
+A Python-powered intelligence platform that maps research-collaboration networks from open data (OpenAlex + CORDIS), scores potential partners, and reveals consortium gaps — so a team can **find the right research partners before writing the grant**. React frontend, FastAPI backend, a Python ETL pipeline, and PostgreSQL. Runs locally with zero setup (SQLite built in) and **deploys as a single Docker container** on Coolify — uvicorn serves the SPA + API, the ETL runs as an in-process weekly scheduler against the container's own PostgreSQL.
 
 See **[PLAN.md](PLAN.md)** for the full architecture, data model, ETL design, roadmap, and the researched free-tier decisions.
 
 ## Stack
 
 - **Frontend:** React 18 + Vite 5 (JavaScript), Cytoscape.js for the network graph
-- **Backend:** Python + FastAPI + SQLAlchemy — **SQLite locally, PostgreSQL (Neon) in production** (picked automatically from `DATABASE_URL`)
-- **ETL:** Python (pyalex, pandas, networkx, rapidfuzz) — runs on a **GitHub Actions** cron, writes precomputed results to Postgres
+- **Backend:** Python + FastAPI + SQLAlchemy — **SQLite locally, PostgreSQL in production** (picked automatically from `DATABASE_URL`)
+- **ETL:** Python (pyalex, pandas, networkx, rapidfuzz) — runs as an **in-process weekly scheduler** inside the app, writes precomputed results to Postgres
 - **Data:** OpenAlex (CC0) + CORDIS (CC BY 4.0) + ROR — all free, no paid API tier
-- **Deploy (all free):** Neon Postgres (never expires) · GitHub Actions (ETL) · Render (API) · Vercel/Cloudflare Pages (frontend)
+- **Deploy:** single Docker image on **Coolify** (Hetzner) — uvicorn serves the built SPA + the `/api`, against the container's own PostgreSQL
 
 ## Project structure
 

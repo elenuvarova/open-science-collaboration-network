@@ -1,4 +1,4 @@
-# DATABASE_URL → Postgres (Neon); absent → SQLite (local). Same code, two environments.
+# DATABASE_URL → Postgres (Coolify-internal); absent → SQLite (local). Same code, two environments.
 import os
 
 from dotenv import load_dotenv
@@ -14,9 +14,9 @@ if url.startswith("postgres://") or url.startswith("postgresql://"):
     scheme, _, rest = url.partition("://")
     db_kind = "postgres"
     # pool_pre_ping: revive a connection that went stale while checked back in.
-    # pool_recycle: drop connections older than 5 min on checkout (Neon free-tier
-    # autosuspends idle compute). TCP keepalives keep an in-use connection alive
-    # across short idle gaps (e.g. the embedding encode) so it isn't reset.
+    # pool_recycle: drop connections older than 5 min on checkout. TCP keepalives
+    # keep an in-use connection alive across short idle gaps (e.g. the embedding
+    # encode) so it isn't reset by an idle timeout.
     engine = create_engine(
         f"postgresql+psycopg://{rest}",
         pool_pre_ping=True,
