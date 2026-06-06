@@ -1,18 +1,6 @@
 export default function GraphControls({ cyRef }) {
   const btn = (label, title, onClick) => (
-    <button
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-      style={{
-        width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
-        color: "var(--text-2)", cursor: "pointer", fontSize: "var(--text-base)",
-        transition: "background var(--transition)",
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-      onMouseLeave={e => e.currentTarget.style.background = "var(--surface)"}
-    >
+    <button className="graph-zoom-btn" title={title} aria-label={title} onClick={onClick}>
       {label}
     </button>
   );

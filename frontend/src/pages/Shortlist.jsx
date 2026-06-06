@@ -57,7 +57,7 @@ function HoverCard({ inst, anchor }) {
     const cardH = cardRef.current.offsetHeight || 200;
     const winH = window.innerHeight;
     const winW = window.innerWidth;
-    const top = Math.min(rect.top, winH - cardH - 16);
+    const top = Math.max(8, Math.min(rect.top, winH - cardH - 16));
     // Prefer the right of the row; on full-width rows that overflows the viewport,
     // so flip to the left side. Clamp to ≥8px so it's never clipped off-screen.
     const wouldOverflowRight = rect.right + 12 + HOVER_CARD_W > winW;
@@ -103,7 +103,7 @@ function HoverCard({ inst, anchor }) {
       </div>
       {entries.map(([k, v]) => (
         <div key={k} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: "var(--sp-1)" }}>
-          <div style={{ flex: 1, height: 4, background: "var(--border)", borderRadius: "var(--r-full)", overflow: "hidden" }}>
+          <div style={{ flex: 1, height: "var(--bar-h)", background: "var(--border)", borderRadius: "var(--r-full)", overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${Math.min((v / (SCORE_MAX[k] || 30)) * 100, 100)}%`, background: "var(--accent)", borderRadius: "var(--r-full)" }} />
           </div>
           <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", width: 24, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{v.toFixed(0)}</span>
@@ -218,7 +218,9 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           <option value={70}>Score 70+</option>
           <option value={80}>Score 80+</option>
         </select>
-        {!loading && <span className="muted">{list.length} institutions</span>}
+        <span className="muted" role="status" aria-live="polite">
+          {!loading && `${list.length} institutions`}
+        </span>
         {!loading && list.length > 0 && (
           <button
             className="btn btn-secondary btn-sm"
@@ -235,11 +237,17 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
         )}
       </div>
 
-      {loading && <SkeletonList rows={10} />}
+      {loading && (
+        <div role="status" aria-live="polite">
+          <span className="sr-only">Loading partners…</span>
+          <SkeletonList rows={10} />
+        </div>
+      )}
 
       {!loading && error && (
         <EmptyState
           icon="⚠️"
+          role="alert"
           title="Couldn’t load partners"
           body="The server didn’t respond — it may be waking up. Give it a moment and try again."
           action={<button className="btn btn-primary btn-sm" onClick={() => setReloadKey(k => k + 1)}>Retry</button>}
@@ -250,6 +258,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
         hasFilters ? (
           <EmptyState
             icon="🔭"
+            role="status"
             title="No partners match these filters"
             body="Try widening the country, type, or minimum-score filter to see more institutions."
             action={<button className="btn btn-secondary btn-sm" onClick={clearFilters}>Clear filters</button>}
@@ -257,6 +266,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
         ) : (
           <EmptyState
             icon="🔭"
+            role="status"
             title="No partners yet for this topic"
             body="Collaboration data for this topic isn’t available yet. Check back shortly."
           />
@@ -297,20 +307,10 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             </span>
             {onToggleConsortium && (
               <button
+                className={`consortium-toggle${inConsortium ? " is-active" : ""}`}
                 title={inConsortium ? "Remove from consortium" : "Add to consortium"}
                 aria-label={inConsortium ? "Remove from consortium" : "Add to consortium"}
                 onClick={(e) => { e.stopPropagation(); onToggleConsortium(inst); }}
-                style={{
-                  marginLeft: "var(--sp-2)",
-                  width: 30, height: 30,
-                  borderRadius: "var(--r-full)",
-                  border: "1px solid var(--border)",
-                  background: inConsortium ? "var(--accent)" : "none",
-                  color: inConsortium ? "var(--on-accent)" : "var(--text-3)",
-                  fontSize: "var(--text-base)", lineHeight: 1,
-                  cursor: "pointer", flexShrink: 0,
-                  transition: "background var(--dur-fast), color var(--dur-fast)",
-                }}
               >
                 {inConsortium ? "✓" : "+"}
               </button>

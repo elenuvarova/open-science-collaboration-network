@@ -109,7 +109,7 @@ export default function Tour({ onClose }) {
         <h2 id="tour-title" style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--w-bold)", marginBottom: "var(--sp-3)", lineHeight: "var(--leading-snug)", textAlign: "center" }}>
           {current.title}
         </h2>
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)", marginBottom: "var(--sp-8)", textAlign: "center" }}>
+        <p className="body-text" style={{ color: "var(--text-3)", marginBottom: "var(--sp-8)", textAlign: "center" }}>
           {current.body}
         </p>
 
@@ -126,13 +126,10 @@ export default function Tour({ onClose }) {
         </div>
 
         <button
+          className="icon-btn"
           onClick={finish}
           aria-label="Close tour"
-          style={{
-            position: "absolute", top: "var(--sp-4)", right: "var(--sp-4)",
-            background: "none", border: "none", color: "var(--text-3)",
-            cursor: "pointer", fontSize: "var(--text-base)", lineHeight: 1,
-          }}
+          style={{ position: "absolute", top: "var(--sp-4)", right: "var(--sp-4)" }}
         >✕</button>
       </div>
     </div>

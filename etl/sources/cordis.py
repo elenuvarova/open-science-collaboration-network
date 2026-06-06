@@ -32,7 +32,16 @@ def _download_zip(url: str, label: str) -> bytes:
     print(f"  cordis: downloading {label} ({url})…")
     r = requests.get(url, timeout=120, stream=True)
     r.raise_for_status()
-    data = r.content
+    # Cap the download so a runaway/corrupted upstream can't OOM the shared
+    # container (the ETL runs in-process alongside the API).
+    max_bytes = 500 * 1024 * 1024
+    chunks, total = [], 0
+    for chunk in r.iter_content(chunk_size=1 << 20):
+        total += len(chunk)
+        if total > max_bytes:
+            raise ValueError(f"cordis: {label} exceeded {max_bytes // (1024*1024)} MB download cap")
+        chunks.append(chunk)
+    data = b"".join(chunks)
     with open(cache_file, "wb") as f:
         f.write(data)
     return data
@@ -44,6 +53,9 @@ def _read_csv_from_zip(data: bytes, filename: str) -> pd.DataFrame:
         match = next((n for n in names if n.endswith(filename)), None)
         if match is None:
             raise FileNotFoundError(f"{filename} not in ZIP. Files: {names[:10]}")
+        # Guard against a zip bomb before decompressing the member into pandas.
+        if z.getinfo(match).file_size > 1024 * 1024 * 1024:
+            raise ValueError(f"cordis: {match} uncompressed size exceeds 1 GB cap")
         with z.open(match) as f:
             return pd.read_csv(
                 f, sep=";", encoding="utf-8-sig",

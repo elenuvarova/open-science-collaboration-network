@@ -21,6 +21,10 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   const textColor = v("--text-1", "#f1f5f9");
   const bgColor = v("--bg", "#0f1117");
   const borderColor = v("--border", "#2d3748");
+  // Project edges tint with the accent so they track the theme; cytoscape can't
+  // read CSS var(), so resolve --accent and append an alpha byte (88 ≈ 53%).
+  const accentColor = v("--accent", "#4f8ef7");
+  const projectEdgeColor = `${accentColor}88`;
 
   // Derive unique communities for legend
   const communities = [...new Map(
@@ -113,7 +117,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     {
       selector: 'edge[type="project"]',
       style: {
-        "line-color": "#4f8ef755",
+        "line-color": projectEdgeColor,
         "line-style": "dashed",
         "line-dash-pattern": [4, 3],
         opacity: 0.6,
@@ -227,7 +231,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         style={{ width: "100%", height: "100%" }}
         cy={(cy) => { cyRef.current = cy; setReady(true); }}
       />
-      <ul className="sr-only">
+      <ul className="sr-only-focusable">
         {srNodes.map((n) => (
           <li key={n.id}>
             <button onClick={() => onNodeClickRef.current?.({

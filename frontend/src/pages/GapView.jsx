@@ -96,7 +96,8 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
   }, [consortium.length]);
 
   if (loading) return (
-    <div>
+    <div role="status" aria-live="polite">
+      <span className="sr-only">Loading consortium gaps…</span>
       <div className="gap-grid">
         {Array.from({ length: 6 }).map((_, i) => (
           <div className="gap-card" key={i}>
@@ -112,6 +113,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
   if (error && consortium.length === 0) return (
     <EmptyState
       icon="⚠️"
+      role="alert"
       title="Couldn’t load network data"
       body="The server didn’t respond — it may be waking up. Give it a moment and try again."
       action={<button className="btn btn-primary btn-sm" onClick={() => setReloadKey(k => k + 1)}>Retry</button>}
@@ -126,29 +128,16 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", marginBottom: "var(--sp-4)", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: "var(--sp-1)", background: "var(--border)", borderRadius: "var(--r-md)", padding: 2 }}>
+        <div className="segmented">
           {["network", "consortium"].map(m => (
-            <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m} style={{
-              padding: "var(--sp-2) var(--sp-3)",
-              borderRadius: "var(--r-sm)",
-              border: "none",
-              background: mode === m ? "var(--surface)" : "none",
-              color: mode === m ? "var(--text-1)" : "var(--text-2)",
-              fontSize: "var(--text-xs)",
-              fontWeight: mode === m ? "var(--w-semibold)" : "normal",
-              cursor: "pointer",
-              transition: "background var(--dur-fast), color var(--dur-fast)",
-            }}>
+            <button key={m} className="segmented-btn" onClick={() => setMode(m)} aria-pressed={mode === m}>
               {m === "network" ? "Full network" : `My Consortium${consortium.length ? ` (${consortium.length})` : ""}`}
             </button>
           ))}
         </div>
-        <p className="muted" style={{ margin: 0 }}>{label}</p>
+        <p className="muted" style={{ margin: 0 }} role="status" aria-live="polite">{label}</p>
         {mode === "consortium" && consortium.length > 0 && onClearConsortium && (
-          <button onClick={onClearConsortium} style={{
-            background: "none", border: "none", fontSize: "var(--text-xs)",
-            color: "var(--text-3)", cursor: "pointer", textDecoration: "underline",
-          }}>Clear</button>
+          <button className="btn btn-ghost btn-sm" onClick={onClearConsortium}>Clear</button>
         )}
       </div>
 

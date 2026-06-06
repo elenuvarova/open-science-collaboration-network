@@ -32,16 +32,17 @@ export default function NetworkMap({ topicId }) {
     <div className="graph-wrap">
       <div className="graph-canvas">
         {loading
-          ? <div className="spinner">Building graph…</div>
+          ? <div className="spinner" role="status" aria-live="polite">Building graph…</div>
           : error
             ? <EmptyState
                 icon="⚠️"
+                role="alert"
                 title="Couldn’t load the network"
                 body="The server didn’t respond — it may be waking up. Give it a moment and try again."
                 action={<button className="btn btn-primary btn-sm" onClick={() => setReloadKey(k => k + 1)}>Retry</button>}
               />
             : graph.nodes.length === 0
-            ? <EmptyState icon="🕸️" title="No collaboration data yet" body="There’s no network to show for this topic yet. Check back shortly." />
+            ? <EmptyState icon="🕸️" role="status" title="No collaboration data yet" body="There’s no network to show for this topic yet. Check back shortly." />
             : <GraphCanvas
                 nodes={graph.nodes}
                 edges={graph.edges}

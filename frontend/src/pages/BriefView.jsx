@@ -2,30 +2,16 @@ import { useEffect, useState } from "react";
 import { getBrief } from "../api";
 
 function CopyButton({ text }) {
-  const [label, setLabel] = useState("Copy brief");
+  const [copied, setCopied] = useState(false);
   function copy() {
     navigator.clipboard.writeText(text).then(() => {
-      setLabel("Copied!");
-      setTimeout(() => setLabel("Copy brief"), 2000);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
   }
   return (
-    <button
-      onClick={copy}
-      style={{
-        background: "none",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--r-md)",
-        padding: "var(--sp-1) var(--sp-3)",
-        fontSize: "var(--text-xs)",
-        color: "var(--text-3)",
-        cursor: "pointer",
-        transition: "color var(--dur-fast), border-color var(--dur-fast)",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.color = "var(--text-1)"; e.currentTarget.style.borderColor = "var(--text-3)"; }}
-      onMouseLeave={e => { e.currentTarget.style.color = "var(--text-3)"; e.currentTarget.style.borderColor = "var(--border)"; }}
-    >
-      {label}
+    <button className="btn btn-secondary btn-sm" onClick={copy}>
+      <span role="status" aria-live="polite">{copied ? "Copied!" : "Copy brief"}</span>
     </button>
   );
 }
@@ -38,10 +24,7 @@ function BriefText({ text }) {
   for (const line of lines) {
     if (line.startsWith("## ")) {
       elements.push(
-        <h2 key={key++} style={{
-          fontSize: "var(--text-lg)",
-          fontWeight: "var(--w-semibold)",
-          color: "var(--text-1)",
+        <h2 key={key++} className="subhead" style={{
           marginTop: "var(--sp-5)",
           marginBottom: "var(--sp-2)",
         }}>
@@ -52,12 +35,7 @@ function BriefText({ text }) {
       elements.push(<div key={key++} style={{ height: "var(--sp-2)" }} />);
     } else {
       elements.push(
-        <p key={key++} style={{
-          fontSize: "var(--text-sm)",
-          color: "var(--text-2)",
-          lineHeight: "var(--leading-relaxed)",
-          margin: 0,
-        }}>
+        <p key={key++} className="body-text" style={{ margin: 0 }}>
           {line}
         </p>
       );
@@ -83,7 +61,8 @@ export default function BriefView({ topicId }) {
 
   if (loading) {
     return (
-      <div className="card">
+      <div className="card" role="status" aria-live="polite">
+        <span className="sr-only">Loading strategy brief…</span>
         <div className="skel" style={{ height: 12, width: "40%", marginBottom: "var(--sp-4)" }} />
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="skel" style={{ height: 10, width: `${70 + (i % 3) * 10}%`, marginBottom: "var(--sp-2)" }} />
@@ -94,12 +73,12 @@ export default function BriefView({ topicId }) {
 
   if (missing) {
     return (
-      <div className="card" style={{ textAlign: "center", padding: "var(--sp-8) var(--sp-6)" }}>
+      <div className="card" role="status" aria-live="polite" style={{ textAlign: "center", padding: "var(--sp-8) var(--sp-6)" }}>
         <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)" }} aria-hidden="true">🤖</div>
-        <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--w-semibold)", color: "var(--text-1)", marginBottom: "var(--sp-2)" }}>
+        <div className="subhead" style={{ marginBottom: "var(--sp-2)" }}>
           The strategy brief isn’t ready yet
         </div>
-        <div style={{ fontSize: "var(--text-sm)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)", maxWidth: 340, margin: "0 auto" }}>
+        <div className="body-text" style={{ color: "var(--text-3)", maxWidth: 340, margin: "0 auto" }}>
           We haven’t generated an AI strategy brief for this topic yet. Check back shortly, or explore the partner shortlist and network map in the meantime.
         </div>
       </div>

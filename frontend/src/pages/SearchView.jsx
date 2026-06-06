@@ -5,7 +5,7 @@ function SimilarityBar({ value }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
       <div style={{
-        flex: 1, height: 4,
+        flex: 1, height: "var(--bar-h)",
         background: "var(--border)",
         borderRadius: "var(--r-full)",
         overflow: "hidden",
@@ -109,21 +109,27 @@ export default function SearchView({ topicId }) {
         )}
       </div>
 
-      {loading && (
-        <div style={{ textAlign: "center", padding: "var(--sp-8)", color: "var(--text-3)", fontSize: "var(--text-sm)" }}>
-          Searching…
-        </div>
-      )}
+      <div role="status" aria-live="polite">
+        {loading && (
+          <div style={{ textAlign: "center", padding: "var(--sp-8)", color: "var(--text-3)", fontSize: "var(--text-sm)" }}>
+            Searching…
+          </div>
+        )}
+
+        {!loading && searched && results.length > 0 && (
+          <span className="sr-only">{results.length} matching works found.</span>
+        )}
+
+        {!loading && searched && results.length === 0 && (
+          <div className="card" style={{ color: "var(--text-3)", fontSize: "var(--text-sm)" }}>
+            No matching works found. Try a different phrasing.
+          </div>
+        )}
+      </div>
 
       {error && (
-        <div className="card" style={{ color: "var(--red)" }}>
+        <div className="card" role="alert" style={{ color: "var(--red)" }}>
           {error.includes("503") ? "Embedding model is loading — try again in a few seconds." : error}
-        </div>
-      )}
-
-      {!loading && searched && results.length === 0 && (
-        <div className="card" style={{ color: "var(--text-3)", fontSize: "var(--text-sm)" }}>
-          No matching works found. Try a different phrasing.
         </div>
       )}
 
@@ -139,10 +145,7 @@ export default function SearchView({ topicId }) {
                 marginBottom: "var(--sp-1)",
               }}>
                 {r.doi
-                  ? <a href={`https://doi.org/${r.doi}`} target="_blank" rel="noreferrer"
-                      style={{ color: "inherit", textDecoration: "none" }}
-                      onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
-                      onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+                  ? <a className="result-link" href={`https://doi.org/${r.doi}`} target="_blank" rel="noreferrer">
                       {r.title}
                     </a>
                   : r.title}

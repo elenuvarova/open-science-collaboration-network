@@ -62,6 +62,12 @@
   /* Topbar height */
   --topbar-h: 52px;
 
+  /* Mini-bar height — breakdown / similarity / hover-card bars share one value */
+  --bar-h: 5px;
+
+  /* Tracking for uppercase captions (eyebrow, stat-label, gap-card-title, Topic) */
+  --track-caption: 0.06em;
+
   /*
    * Motion scale — four intents instead of ~6 ad-hoc durations.
    *   fast : micro-feedback (icon hover, pill colour)
@@ -111,6 +117,11 @@
   --accent:      #4f8ef7;
   --accent-h:    #6fa5ff;
   --accent-sub:  #1e3a6e;
+  /* Solid action fill — darker than --accent so white text clears AA (5.17:1),
+     which --accent alone fails in dark (3.21:1). --accent stays for links /
+     focus-ring / breakdown bars, which sit on the dark page bg. */
+  --accent-strong:   #2563eb;
+  --accent-strong-h: #1d4ed8;
   --green:       #4ade80;
   --green-bg:    #14532d;
   --yellow:      #fbbf24;
@@ -121,12 +132,12 @@
   --on-accent:   #ffffff;
   --scrim:       rgba(0,0,0,0.7);
   /* Institution type badges (dark) */
-  --type-education-fg:#60a5fa; --type-education-bg:#1e3a6e;
+  --type-education-fg:#60a5fa; --type-education-bg:#142a52; /* darkened from #1e3a6e → 5.57:1 (11px AA) */
   --type-company-fg:#4ade80;   --type-company-bg:#14532d;
   --type-ngo-fg:#fbbf24;       --type-ngo-bg:#451a03;
   --type-public-fg:#c084fc;    --type-public-bg:#2e1065;
   --type-health-fg:#f472b6;    --type-health-bg:#4a0a2e;
-  --type-facility-fg:#34d399;  --type-facility-bg:#065f46;
+  --type-facility-fg:#34d399;  --type-facility-bg:#04402f; /* darkened from #065f46 → 6.14:1 (11px AA) */
   --type-funder-fg:#fb923c;    --type-funder-bg:#431407;
   --type-other-fg:#94a3b8;     --type-other-bg:#1e293b;
 }
@@ -146,6 +157,8 @@
   --accent:      #2563eb;
   --accent-h:    #1d4ed8;
   --accent-sub:  #dbeafe;
+  --accent-strong:   #2563eb;
+  --accent-strong-h: #1d4ed8;
   --green:       #15803d; /* darkened from #16a34a → 4.6:1 on --green-bg */
   --green-bg:    #dcfce7;
   --yellow:      #b45309;
@@ -166,7 +179,7 @@
   --type-health-fg:#be185d;    --type-health-bg:#fce7f3;
   --type-facility-fg:#0f766e;  --type-facility-bg:#ccfbf1;
   --type-funder-fg:#c2410c;    --type-funder-bg:#fff7ed;
-  --type-other-fg:#64748b;     --type-other-bg:#f1f5f9;
+  --type-other-fg:#566273;     --type-other-bg:#f1f5f9; /* darkened from #64748b → 5.65:1 (11px AA) */
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -273,7 +286,7 @@ a:hover { color: var(--accent-h); }
   letter-spacing: 0.01em;
 }
 .nav-btn:hover  { background: var(--surface-2); color: var(--text-1); }
-.nav-btn.active { background: var(--accent-sub); color: var(--accent); font-weight: var(--w-semibold); }
+.nav-btn.active { background: var(--accent-sub); color: var(--accent-h); font-weight: var(--w-semibold); }
 
 /* Live count of the current topic's consortium on the Gaps tab */
 .nav-badge {
@@ -288,6 +301,7 @@ a:hover { color: var(--accent-h); }
   min-width: 18px;
   text-align: center;
   line-height: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 .icon-btn {
@@ -408,8 +422,8 @@ a:hover { color: var(--accent-h); }
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-primary { background: var(--accent); color: var(--on-accent); }
-.btn-primary:hover:not(:disabled) { background: var(--accent-h); }
+.btn-primary { background: var(--accent-strong); color: var(--on-accent); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-strong-h); }
 
 .btn-secondary { background: var(--surface); border-color: var(--border); color: var(--text-2); }
 .btn-secondary:hover:not(:disabled) { color: var(--text-1); border-color: var(--text-3); }
@@ -517,6 +531,7 @@ a:hover { color: var(--accent-h); }
   width: 20px;
   text-align: right;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .inst-info { flex: 1; min-width: 0; }
@@ -555,7 +570,7 @@ a:hover { color: var(--accent-h); }
 }
 .score-high { background: var(--green-bg);  color: var(--green);  }
 .score-mid  { background: var(--yellow-bg); color: var(--yellow); }
-.score-low  { background: var(--surface-2); color: var(--text-3); }
+.score-low  { background: var(--surface-2); color: var(--text-2); }
 
 /* ═══════════════════════════════════════════════════════
    Score breakdown
@@ -580,14 +595,14 @@ a:hover { color: var(--accent-h); }
 
 .breakdown-bar-bg {
   flex: 1;
-  height: 5px;
+  height: var(--bar-h);
   background: var(--border);
   border-radius: var(--r-full);
   overflow: hidden;
 }
 
 .breakdown-bar {
-  height: 5px;
+  height: var(--bar-h);
   border-radius: var(--r-full);
   background: var(--accent);
   transition: width var(--dur-data) cubic-bezier(0.4, 0, 0.2, 1);
@@ -748,7 +763,7 @@ a:hover { color: var(--accent-h); }
   font-weight: var(--w-semibold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-caption);
   margin-bottom: var(--sp-2);
 }
 
@@ -773,7 +788,8 @@ a:hover { color: var(--accent-h); }
 }
 
 /* Visually hidden but present in the DOM and keyboard/AT-reachable (WCAG). */
-.sr-only {
+.sr-only,
+.sr-only-focusable {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -785,9 +801,11 @@ a:hover { color: var(--accent-h); }
   border: 0;
 }
 
-/* When a focusable child inside an .sr-only list receives keyboard focus, un-clip
-   the container so a sighted keyboard user isn't sent to an invisible 1×1px box. */
-.sr-only:focus-within {
+/* Only the *focusable* variant un-clips on focus — used by the graph's keyboard
+   node list so a sighted keyboard user isn't sent to an invisible 1×1px box.
+   Plain .sr-only (e.g. the programmatic per-page heading focus target) stays
+   hidden even while focused. */
+.sr-only-focusable:focus-within {
   position: absolute;
   top: var(--sp-2);
   left: var(--sp-2);
@@ -820,6 +838,12 @@ a:hover { color: var(--accent-h); }
   color: var(--text-2);
   border: 1px solid var(--border-sub);
   margin: 2px;
+  /* Long consortium org names must not overflow narrow screens. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 button.tag { cursor: pointer; }
 button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
@@ -870,7 +894,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   margin-top: var(--sp-1);
   line-height: var(--leading-normal);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-caption);
 }
 
 /* Eyebrow utility — uppercase tracked caption */
@@ -879,7 +903,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   font-weight: var(--w-semibold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-caption);
   line-height: var(--leading-normal);
 }
 
@@ -891,6 +915,95 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   color: var(--text-1);
   letter-spacing: -0.02em;
   line-height: var(--leading-tight);
+}
+
+/* Level 4 (18px) sub-heading — card / empty-state / brief section titles. One
+   shared rule instead of the same three inline declarations repeated. */
+.subhead {
+  font-size: var(--text-lg);
+  font-weight: var(--w-semibold);
+  color: var(--text-1);
+  line-height: var(--leading-snug);
+}
+
+/* Body copy — relaxed secondary paragraph used across views */
+.body-text {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: var(--leading-relaxed);
+}
+
+/* A title inside a card/link that inherits colour and only underlines on hover */
+.result-link { color: inherit; }
+.result-link:hover { text-decoration: underline; }
+
+/* ── Segmented toggle ── (GapView network/consortium switch) */
+.segmented {
+  display: inline-flex;
+  gap: var(--sp-1);
+  background: var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-1);
+}
+.segmented-btn {
+  padding: var(--sp-2) var(--sp-3);
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: var(--w-medium);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.segmented-btn[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text-1);
+  font-weight: var(--w-semibold);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Consortium add/remove toggle ── (the +/✓ button on a shortlist row) */
+.consortium-toggle {
+  margin-left: var(--sp-2);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-3);
+  font-size: var(--text-base);
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.consortium-toggle.is-active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ── Graph zoom/fit buttons ── (overlay on the canvas) */
+.graph-zoom-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: var(--text-base);
+  transition: background var(--transition);
+}
+.graph-zoom-btn:hover { background: var(--surface-2); }
+
+/* Touch devices: enforce ≥44px tap targets (WCAG 2.5.8). */
+@media (hover: none) {
+  .consortium-toggle { width: 44px; height: 44px; }
+  .graph-zoom-btn { width: 44px; height: 44px; }
 }
 
 /* ═══════════════════════════════════════════════════════

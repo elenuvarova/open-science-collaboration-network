@@ -28,8 +28,8 @@ def _get_model():
 @limiter.limit("30/minute")
 def search_works(
     request: Request,
-    q: str,
-    topic: int,
+    q: str = Query(..., max_length=512),
+    topic: int = Query(...),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):

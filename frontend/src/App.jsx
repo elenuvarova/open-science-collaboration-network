@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getTopics } from "./api";
 import NetworkMap from "./pages/NetworkMap";
 import Shortlist from "./pages/Shortlist";
@@ -66,6 +66,12 @@ export default function App() {
   });
   const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
   const [theme, toggleTheme] = useTheme();
+
+  // Per-view heading. On page change we move focus here so keyboard / screen-reader
+  // users are taken to the new view and hear its name (WCAG 2.4.3 / 2.4.6).
+  const headingRef = useRef(null);
+  const pageLabel = PAGES.find(p => p.id === page)?.label || "";
+  useEffect(() => { headingRef.current?.focus(); }, [page]);
 
   // Consortium is scoped per topic (an org's Partner Fit Score only means
   // something within the topic it was matched on) and persisted to localStorage
@@ -142,11 +148,14 @@ export default function App() {
               key={p.id}
               className={`nav-btn ${page === p.id ? "active" : ""}`}
               aria-current={page === p.id ? "page" : undefined}
+              aria-label={p.id === "gaps" && consortium.length > 0
+                ? `${p.label}, ${consortium.length} selected`
+                : undefined}
               onClick={() => setPage(p.id)}
             >
               {p.label}
               {p.id === "gaps" && consortium.length > 0 && (
-                <span className="nav-badge">{consortium.length}</span>
+                <span className="nav-badge" aria-hidden="true">{consortium.length}</span>
               )}
             </button>
           ))}
@@ -158,7 +167,7 @@ export default function App() {
               <span style={{
                 fontSize: "var(--text-xs)", color: "var(--text-3)",
                 fontWeight: "var(--w-medium)", textTransform: "uppercase",
-                letterSpacing: "0.04em", whiteSpace: "nowrap",
+                letterSpacing: "var(--track-caption)", whiteSpace: "nowrap",
               }}>Topic</span>
               <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                 <select
@@ -189,11 +198,12 @@ export default function App() {
       </header>
 
       <main key={page} className={`fade-in ${isWide ? "page-wide" : "page"}`}>
-        {!topicId && !topicsError && <div className="spinner">Loading topics…</div>}
+        <h2 className="sr-only" tabIndex={-1} ref={headingRef}>{pageLabel}</h2>
+        {!topicId && !topicsError && <div className="spinner" role="status" aria-live="polite">Loading topics…</div>}
         {!topicId && topicsError && (
-          <div className="card" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
+          <div className="card" role="alert" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
             <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-2)" }} aria-hidden="true">⚠️</div>
-            <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--w-semibold)", marginBottom: "var(--sp-2)" }}>
+            <div className="subhead" style={{ marginBottom: "var(--sp-2)" }}>
               Couldn’t reach the server
             </div>
             <p className="muted" style={{ marginBottom: "var(--sp-4)" }}>
