@@ -286,7 +286,10 @@ a:hover { color: var(--accent-h); }
   letter-spacing: 0.01em;
 }
 .nav-btn:hover  { background: var(--surface-2); color: var(--text-1); }
-.nav-btn.active { background: var(--accent-sub); color: var(--accent-h); font-weight: var(--w-semibold); }
+/* Active tab is shown by the pill + accent colour only — NOT a heavier weight,
+   which would change the button's width and shift the whole nav strip on every
+   tab change (visible "jump", especially in the scrollable mobile nav row). */
+.nav-btn.active { background: var(--accent-sub); color: var(--accent-h); }
 
 /* Live count of the current topic's consortium on the Gaps tab */
 .nav-badge {
@@ -702,6 +705,9 @@ a:hover { color: var(--accent-h); }
   border-radius: var(--r-lg);
   overflow: hidden;
   min-width: 0;
+  /* Positioning context so the graph fills it via absolute inset:0 — a
+     percentage height here collapses to 0 in the mobile stacked flex layout. */
+  position: relative;
 }
 
 .graph-sidebar {
@@ -838,8 +844,11 @@ a:hover { color: var(--accent-h); }
   color: var(--text-2);
   border: 1px solid var(--border-sub);
   margin: 2px;
-  /* Long consortium org names must not overflow narrow screens. */
+  /* Long consortium org names must not overflow narrow screens. max-width +
+     min-width:0 lets the chip shrink inside its flex parent so the ellipsis
+     actually engages (min-width:auto would otherwise force its full width). */
   max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

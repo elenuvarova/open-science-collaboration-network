@@ -12,6 +12,7 @@ cytoscape.use(cola);
 
 export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   const cyRef = useRef(null);
+  const containerRef = useRef(null);
   const [ready, setReady] = useState(false);
 
   // Resolve theme tokens from CSS variables so the graph chrome flips with the
@@ -204,6 +205,26 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     };
   }, [ready]);
 
+  // Keep the cytoscape canvas sized to its container. In the mobile stacked
+  // layout the container starts at 0 height during the flex reflow, so cytoscape
+  // captures a 0×0 canvas at init and the graph renders blank. A ResizeObserver
+  // re-syncs the renderer (and re-fits) whenever the container gains/changes size.
+  useEffect(() => {
+    const cy = cyRef.current;
+    const el = containerRef.current;
+    if (!cy || !ready || !el || typeof ResizeObserver === "undefined") return;
+    let fitT;
+    const ro = new ResizeObserver(() => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width < 1 || height < 1) return;
+      cy.resize();
+      clearTimeout(fitT);
+      fitT = setTimeout(() => cyRef.current?.fit(undefined, 30), 120);
+    });
+    ro.observe(el);
+    return () => { clearTimeout(fitT); ro.disconnect(); };
+  }, [ready]);
+
   if (!nodes.length) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-3)", fontSize: "var(--text-sm)" }}>
@@ -220,9 +241,10 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
 
   return (
     <div
+      ref={containerRef}
       role="img"
       aria-label={`Collaboration network: ${nodes.length} institutions across ${communities.length} clusters`}
-      style={{ position: "relative", width: "100%", height: "100%" }}
+      style={{ position: "absolute", inset: 0 }}
     >
       <CytoscapeComponent
         elements={elements}
