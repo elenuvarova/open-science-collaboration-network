@@ -49,6 +49,13 @@ if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") 
         # (inserted above) are matched first.
         @app.get("/{full_path:path}", include_in_schema=False)
         async def serve_spa(full_path: str = ""):
+            # Serve a real root-level static file (favicon.svg, robots.txt, …)
+            # if it exists directly in public/; otherwise fall through to the SPA
+            # shell. The single-segment + no-".." guard blocks path traversal.
+            if full_path and "/" not in full_path and ".." not in full_path:
+                candidate = os.path.join(public_dir, full_path)
+                if os.path.isfile(candidate):
+                    return FileResponse(candidate)
             return FileResponse(os.path.join(public_dir, "index.html"))
 
 print(f"db: {db_kind}")
