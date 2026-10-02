@@ -247,7 +247,7 @@ export default function App() {
             <NetworkMap topicId={topicId} />
           </Suspense>
         )}
-        {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} />}
+        {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} onToggleConsortium={toggleConsortium} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
         {topicId && page === "method"    && <MethodologyView />}

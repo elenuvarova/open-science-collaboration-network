@@ -5,6 +5,7 @@ import Icon from "../components/Icon";
 import TypeBadge from "../components/TypeBadge";
 import { ASSOCIATED_LIST_URL, checkEligibility, countryName, isWidening } from "../horizon";
 import { track } from "../analytics";
+import SuggestedPartners from "../components/SuggestedPartners";
 
 // Roles are inferred from each organisation's ROR type — what kind of organisation
 // it is, not what it would do in a project. The UI says so; the mapping is the
@@ -153,7 +154,7 @@ function BenchmarkCard({ topicId, countries, isConsortium }) {
   );
 }
 
-export default function GapView({ topicId, consortium = [], onClearConsortium }) {
+export default function GapView({ topicId, consortium = [], onClearConsortium, onToggleConsortium }) {
   const [institutions, setInstitutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -264,6 +265,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
           </div>
         </>
       )}
+      {mode === "consortium" && <SuggestedPartners topicId={topicId} consortium={consortium} onToggleConsortium={onToggleConsortium} />}
     </div>
   );
 }
