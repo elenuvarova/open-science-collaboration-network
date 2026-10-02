@@ -14,6 +14,9 @@ Design constraints:
     process. Its stdout/stderr is streamed into our logs.
   * Guard against overlapping runs (a long initial populate must not collide
     with the first weekly tick) via a non-blocking lock.
+  * The delivery record (etl/outputs.py, CORDIS outputs per project) is the last
+    step of every ETL run. On a deploy onto an already-seeded DB it is run once
+    on its own when project_output is empty, so no full ETL run is needed.
 
 Activation: set ENABLE_SCHEDULER=1. Unset → this module does nothing, so local
 dev (and `import`) is side-effect free.
@@ -42,6 +45,7 @@ SCHEDULE_MINUTE_UTC = 0
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 _APP_ROOT = os.path.dirname(_BACKEND_DIR)
 _ETL_ENTRY = os.path.join(_APP_ROOT, "etl", "run.py")
+_OUTPUTS_ENTRY = os.path.join(_APP_ROOT, "etl", "outputs.py")
 
 # Only one ETL run at a time. Non-blocking: a tick that arrives mid-run is
 # skipped rather than queued.
@@ -74,6 +78,27 @@ def _db_is_unseeded() -> bool:
         return True
 
 
+def _outputs_missing() -> bool:
+    """True when project_output has no rows (the delivery record was never ingested).
+
+    Unlike the seed check, an error here means 'don't run': a DB hiccup must not
+    trigger a ~100 MB CORDIS download. The table is created by main.py on import,
+    so a healthy DB always answers."""
+    try:
+        from sqlalchemy import func, select
+
+        from db import SessionLocal
+        from models import ProjectOutput
+
+        with SessionLocal() as db:
+            count = db.execute(select(func.count()).select_from(ProjectOutput)).scalar_one()
+        logger.info("scheduler: project_output rows = %s", count)
+        return (count or 0) == 0
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("scheduler: could not check project_output (%s); skipping the outputs populate", exc)
+        return False
+
+
 def _log_run(reason: str, started: str, finished: str | None, ok: bool, code: int | None) -> None:
     """Best-effort ETL run log (etl_run table); never let logging break the scheduler."""
     try:
@@ -86,16 +111,19 @@ def _log_run(reason: str, started: str, finished: str | None, ok: bool, code: in
         logger.warning("scheduler: could not record ETL run: %s", exc)
 
 
-def _run_etl(reason: str) -> None:
-    """Run the ETL as an isolated subprocess; stream its output to our logs.
+def _run_etl(reason: str, entry: str = _ETL_ENTRY, label: str = "ETL", record: bool = True) -> None:
+    """Run the ETL (or another etl/ script) as an isolated subprocess; stream its
+    output to our logs.
 
-    Overlap guard: if a run is already in progress we skip this one.
+    Overlap guard: if a run is already in progress we skip this one. `record`
+    writes an etl_run row, which the UI reads as "data refreshed on"; the
+    outputs-only job passes False so it never moves that date.
     """
     if not _run_lock.acquire(blocking=False):
-        logger.warning("scheduler: ETL already running; skipping this %s trigger", reason)
+        logger.warning("scheduler: %s already running; skipping this %s trigger", label, reason)
         return
     try:
-        logger.info("scheduler: starting ETL (%s) → %s", reason, _ETL_ENTRY)
+        logger.info("scheduler: starting %s (%s) → %s", label, reason, entry)
         start = time.monotonic()
         started_iso = datetime.now(timezone.utc).isoformat()
         # cwd=_APP_ROOT so `python etl/run.py` puts /app/etl on sys.path[0]
@@ -103,7 +131,7 @@ def _run_etl(reason: str) -> None:
         # ../backend resolution lands on /app/backend. DATABASE_URL /
         # OPENALEX_API_KEY / GROQ_API_KEY are inherited from the process env.
         proc = subprocess.Popen(
-            [sys.executable, _ETL_ENTRY],
+            [sys.executable, entry],
             cwd=_APP_ROOT,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -116,13 +144,14 @@ def _run_etl(reason: str) -> None:
             logger.info("etl: %s", line.rstrip())
         rc = proc.wait()
         dur = time.monotonic() - start
-        _log_run(reason, started_iso, datetime.now(timezone.utc).isoformat(), rc == 0, rc)
+        if record:
+            _log_run(reason, started_iso, datetime.now(timezone.utc).isoformat(), rc == 0, rc)
         if rc == 0:
-            logger.info("scheduler: ETL finished OK in %.0fs (%s)", dur, reason)
+            logger.info("scheduler: %s finished OK in %.0fs (%s)", label, dur, reason)
         else:
-            logger.error("scheduler: ETL exited with code %s after %.0fs (%s)", rc, dur, reason)
+            logger.error("scheduler: %s exited with code %s after %.0fs (%s)", label, rc, dur, reason)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("scheduler: ETL run failed to launch (%s): %s", reason, exc)
+        logger.exception("scheduler: %s failed to launch (%s): %s", label, reason, exc)
     finally:
         _run_lock.release()
 
@@ -147,6 +176,12 @@ def _scheduler_loop() -> None:
         _run_etl("initial-populate")
     else:
         logger.info("scheduler: DB already seeded → skipping initial populate")
+        # Seeded before the delivery record existed: fetch just that, once, here in
+        # the scheduler thread (the web app is never blocked). A full ETL run also
+        # ends with this step, so it is only needed when no ETL runs first.
+        if _outputs_missing() and os.path.exists(_OUTPUTS_ENTRY):
+            logger.info("scheduler: project_output empty → running the outputs populate")
+            _run_etl("initial-outputs", entry=_OUTPUTS_ENTRY, label="outputs job", record=False)
 
     # (b) Weekly cadence forever after.
     while True:

@@ -124,6 +124,33 @@ class EvidenceOut(BaseModel):
     recent_works: Optional[list[WorkSearchResult]] = None
 
 
+# --- Delivery record ----------------------------------------------------------
+# Public outputs of the CORDIS projects an institution took part in. They belong
+# to the projects, never to the partner on its own. CORDIS carries no open-access
+# flag for publications, so there is no OA share.
+
+class DeliveryTotals(BaseModel):
+    deliverables: int = 0    # all types
+    demonstrators: int = 0   # demonstrators, pilots, prototypes
+    datasets: int = 0        # data sets, microdata
+    reports: int = 0         # documents, reports
+    other: int = 0           # plans, websites, patents, videos, ethics, unlabelled
+    publications: int = 0
+
+
+class DeliveryOut(BaseModel):
+    institution_id: int
+    topic_id: Optional[int] = None
+    available: bool = False          # False until etl/outputs.py has filled project_output
+    projects_total: int = 0          # the institution's projects (topic-scoped when topic is set)
+    projects_with_outputs: int = 0   # of those, with at least one deliverable or publication on record
+    totals: DeliveryTotals = DeliveryTotals()
+    projects_with_demonstrator_or_dataset: int = 0
+    demonstrator_or_dataset_share: Optional[float] = None  # 0-1 of projects_total; None without projects
+    publications_per_project: Optional[float] = None       # per project of projects_total; None without projects
+    updated_at: Optional[str] = None  # when the output counts were last refreshed (UTC ISO)
+
+
 class SuggestionOut(BaseModel):
     id: int
     name: str

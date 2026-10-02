@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from db import Base, db_kind, engine
 from eu_calls import get_calls
 from ratelimit import limiter
-from routers import brief, calls, evidence, graph, health, institutions, meta, search, suggest, topics
+from routers import brief, calls, delivery, evidence, graph, health, institutions, meta, search, suggest, topics
 from scheduler import start_scheduler
 
 # Models register on Base via import; create tables if missing (no-op when they exist).
@@ -67,6 +67,7 @@ app.include_router(health.router)
 app.include_router(topics.router)
 app.include_router(institutions.router)
 app.include_router(evidence.router)
+app.include_router(delivery.router)
 app.include_router(graph.router)
 app.include_router(brief.router)
 app.include_router(search.router)

@@ -279,6 +279,14 @@ def main():
     for topic_cfg in topics_to_run:
         run_topic(topic_cfg)
 
+    # Delivery record (CORDIS outputs per project): a final extra step that must
+    # never fail the run — the topics above are already committed.
+    try:
+        import outputs
+        outputs.run()
+    except Exception as e:  # noqa: BLE001
+        print(f"outputs: error (non-fatal): {e}")
+
     print(f"\nAll done — {len(topics_to_run)} topic(s) ingested.")
 
 

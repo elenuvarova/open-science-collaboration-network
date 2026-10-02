@@ -17,6 +17,19 @@ CORDIS_DATASETS = {
     "H2020": "https://cordis.europa.eu/data/cordis-h2020projects-csv.zip",
 }
 
+# Public outputs per project (CORDIS, CC BY 4.0), read by etl/outputs.py. Both
+# files of a programme are keyed by the same projectID as the projects file.
+CORDIS_OUTPUT_DATASETS = {
+    "HORIZON": {
+        "deliverables": "https://cordis.europa.eu/data/cordis-HORIZONprojectDeliverables-csv.zip",
+        "publications": "https://cordis.europa.eu/data/cordis-HORIZONprojectPublications-csv.zip",
+    },
+    "H2020": {
+        "deliverables": "https://cordis.europa.eu/data/cordis-h2020projectDeliverables-csv.zip",
+        "publications": "https://cordis.europa.eu/data/cordis-h2020projectPublications-csv.zip",
+    },
+}
+
 SCORE_WEIGHTS = {
     "topic_relevance": 0.30,
     "publication_activity": 0.20,

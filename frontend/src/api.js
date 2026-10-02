@@ -17,6 +17,10 @@ export const getMeta = () => get("/meta");
 export const getBenchmark = (topicId) => get(`/benchmark?topic=${topicId}`);
 export const getEvidence = (id, topic) =>
   get(`/institutions/${id}/evidence` + (topic ? `?topic=${topic}` : ""));
+// Public outputs (CORDIS deliverables + publications) of the projects an institution took part in:
+// { available, projects_total, projects_with_outputs, totals{…}, demonstrator_or_dataset_share, publications_per_project, updated_at }.
+export const getDelivery = (id, topic) =>
+  get(`/institutions/${id}/delivery` + (topic ? `?topic=${topic}` : ""));
 export const getSuggestions = (topic, ids, role) => {
   const p = new URLSearchParams({ topic, ids: ids.join(",") });
   if (role) p.set("role", role);

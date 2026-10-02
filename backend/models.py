@@ -77,6 +77,24 @@ class Project(Base):
     countries = Column(JSON, default=list)
 
 
+class ProjectOutput(Base):
+    """Public outputs CORDIS lists for a project (one row per project): counts of
+    its deliverables by type plus its publications. They belong to the PROJECT,
+    not to any one partner. Filled by etl/outputs.py; a project CORDIS lists no
+    outputs for has no row. CORDIS's publications file carries no open-access
+    flag, so there is no OA count."""
+    __tablename__ = "project_output"
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("project.id"), unique=True, nullable=False)
+    deliverables = Column(Integer, default=0, nullable=False)   # all types
+    demonstrators = Column(Integer, default=0, nullable=False)  # "Demonstrators, pilots, prototypes"
+    datasets = Column(Integer, default=0, nullable=False)       # "Data sets, microdata, etc"
+    reports = Column(Integer, default=0, nullable=False)        # "Documents, reports"
+    other = Column(Integer, default=0, nullable=False)          # every other type (plans, websites, patents, ethics…)
+    publications = Column(Integer, default=0, nullable=False)
+    updated_at = Column(String)  # UTC ISO-8601, when etl/outputs.py last wrote the row
+
+
 class ProjectParticipant(Base):
     __tablename__ = "project_participant"
     id = Column(Integer, primary_key=True)
