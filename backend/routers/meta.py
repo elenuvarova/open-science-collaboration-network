@@ -46,7 +46,9 @@ def get_meta(db: Session = Depends(get_db)):
     def build():
         # Last successful ETL run; before the run log existed, fall back to the
         # newest brief, which the same ETL run writes.
-        as_of = (db.query(func.max(EtlRun.finished_at)).filter(EtlRun.ok.is_(True)).scalar()
+        # Only full runs count — a briefs-only refresh doesn't make the scores newer.
+        as_of = (db.query(func.max(EtlRun.finished_at))
+                 .filter(EtlRun.ok.is_(True), EtlRun.reason.in_(["weekly", "initial-populate"])).scalar()
                  or db.query(func.max(TopicBrief.generated_at)).scalar())
         return MetaOut(
             data_as_of=as_of,

@@ -17,7 +17,110 @@ from _db import SessionLocal
 from models import Institution, InstitutionMetric, Topic, TopicBrief, Work, WorkEmbedding
 
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+# Groq retires models without notice (llama-3.3-70b-versatile disappeared in
+# Aug 2026 and briefs silently stopped refreshing). GROQ_MODEL overrides; otherwise
+# take the first of these that the account can actually see.
+GROQ_PREFERRED = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
+
+
+def _pick_groq_model(api_key: str) -> str:
+    override = os.environ.get("GROQ_MODEL")
+    if override:
+        return override
+    try:
+        import requests
+        r = requests.get(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=20,
+        )
+        r.raise_for_status()
+        available = {m["id"] for m in r.json().get("data", [])}
+        for model in GROQ_PREFERRED:
+            if model in available:
+                return model
+        print(f"  embed: none of {GROQ_PREFERRED} available on Groq; trying the first anyway")
+    except Exception as e:  # noqa: BLE001
+        print(f"  embed: could not list Groq models ({e}); using {GROQ_PREFERRED[0]}")
+    return GROQ_PREFERRED[0]
+
+
+def _clean_brief(text: str) -> str:
+    """Normalise model Markdown: '**## Heading**' → '## Heading', trim."""
+    import re
+    text = re.sub(r"^\s*\*\*\s*(#{2,3}\s*[^*\n]+?)\s*\*\*\s*$", r"\1", text, flags=re.M)
+    return text.strip()
+
+
+def _groq_brief(prompt: str):
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        return None, None
+    model = _pick_groq_model(key)
+    from groq import Groq
+    kwargs = dict(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        # Reasoning models spend completion tokens thinking before they answer,
+        # so the old 900-token cap left the content empty.
+        max_completion_tokens=3000,
+    )
+    if model.startswith("openai/gpt-oss"):
+        kwargs["reasoning_effort"] = "low"
+    resp = Groq(api_key=key).chat.completions.create(**kwargs)
+    return resp.choices[0].message.content or "", model
+
+
+GEMINI_PREFERRED = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-pro-latest", "gemini-2.5-pro"]
+
+
+def _gemini_brief(prompt: str):
+    """Google Gemini (free tier) via REST — the fallback when Groq is down or
+    has retired its models. Picks the first preferred model the key can use."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return None, None
+    import requests
+    base = "https://generativelanguage.googleapis.com/v1beta"
+    headers = {"x-goog-api-key": key}
+    model = os.environ.get("GEMINI_MODEL")
+    if not model:
+        listed = requests.get(f"{base}/models", headers=headers, timeout=20)
+        listed.raise_for_status()
+        usable = [m["name"].split("/", 1)[1] for m in listed.json().get("models", [])
+                  if "generateContent" in m.get("supportedGenerationMethods", [])]
+        model = next((m for m in GEMINI_PREFERRED if m in usable),
+                     next((m for m in usable if "flash" in m), usable[0] if usable else GEMINI_PREFERRED[0]))
+    r = requests.post(
+        f"{base}/models/{model}:generateContent",
+        headers=headers,
+        json={"contents": [{"parts": [{"text": prompt}]}],
+              "generationConfig": {"temperature": 0.3, "maxOutputTokens": 3000}},
+        timeout=120,
+    )
+    r.raise_for_status()
+    parts = r.json()["candidates"][0]["content"]["parts"]
+    return "".join(p.get("text", "") for p in parts), f"gemini/{model}"
+
+
+def _generate_brief(prompt: str):
+    """Try each configured provider in turn; return (text, model) or (None, None).
+    Loud on failure: a stale brief used to fail silently for weeks."""
+    for provider in (_groq_brief, _gemini_brief):
+        try:
+            text, model = provider(prompt)
+        except Exception as e:  # noqa: BLE001
+            print(f"  embed: {provider.__name__} failed: {e}")
+            continue
+        if model is None:
+            continue
+        text = _clean_brief(text)
+        if len(text) >= 400:
+            return text, model
+        print(f"  embed: {model} returned a too-short brief ({len(text)} chars)")
+    print("  embed: BRIEF NOT UPDATED — no provider produced a usable brief")
+    return None, None
 TOP_INST = 12
 TOP_WORKS = 15
 
@@ -92,9 +195,8 @@ def embed_topic(db, topic_name: str) -> None:
         print(f"  embed: no embeddable works, using citation fallback")
 
     # ── 2. Brief generation ──────────────────────────────────────────────────
-    groq_key = os.environ.get("GROQ_API_KEY")
-    if not groq_key:
-        print("  embed: GROQ_API_KEY not set — skipping brief generation")
+    if not (os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY")):
+        print("  embed: neither GROQ_API_KEY nor GEMINI_API_KEY set — skipping brief generation")
         return
 
     top_insts = (
@@ -138,21 +240,18 @@ def embed_topic(db, topic_name: str) -> None:
         "## EU funding context\n\n"
         "Be specific: name institutions, mention their country and type, reference actual "
         "EU project counts where relevant. Write in clear professional English.\n\n"
+        "Hard rules:\n"
+        "- Use ONLY facts present in the context. Do not invent budgets, euro amounts, "
+        "work-programme names, call identifiers, dates or statistics.\n"
+        "- If the context doesn't say something, leave it out rather than guess.\n"
+        "- At most 450 words. Plain Markdown: each section starts with a line '## Heading' "
+        "(no bold around headings), short paragraphs or '- ' bullet lists. "
+        "No tables, no horizontal rules.\n\n"
         f"{context}"
     )
 
-    try:
-        from groq import Groq
-        client = Groq(api_key=groq_key)
-        resp = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=900,
-            temperature=0.4,
-        )
-        brief_text = resp.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"  embed: Groq error: {e}")
+    brief_text, model = _generate_brief(prompt)
+    if not brief_text:
         return
 
     now = datetime.now(timezone.utc).isoformat()
@@ -160,13 +259,13 @@ def embed_topic(db, topic_name: str) -> None:
     if existing:
         existing.text = brief_text
         existing.generated_at = now
-        existing.model = GROQ_MODEL
+        existing.model = model
     else:
         db.add(TopicBrief(
             topic_id=topic.id,
             text=brief_text,
             generated_at=now,
-            model=GROQ_MODEL,
+            model=model,
         ))
     db.flush()
-    print(f"  embed: brief generated ({len(brief_text)} chars, model={GROQ_MODEL})")
+    print(f"  embed: brief generated ({len(brief_text)} chars, model={model})")

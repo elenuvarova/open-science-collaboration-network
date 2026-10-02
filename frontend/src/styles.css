@@ -1207,3 +1207,11 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   .evidence-item { flex-wrap: wrap; }
   .evidence-main { flex-basis: 100%; }
 }
+
+/* AI brief Markdown */
+.brief-text .brief-h { margin: var(--sp-6) 0 var(--sp-2); }
+.brief-text h3.brief-h { font-size: var(--text-base); }
+.brief-text .brief-p { margin: 0 0 var(--sp-3); }
+.brief-text .brief-row { margin: 0 0 var(--sp-1); font-size: var(--text-sm); }
+.brief-list { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); display: grid; gap: var(--sp-1); color: var(--text-2); line-height: 1.55; }
+.brief-list .brief-sub { margin-left: var(--sp-5); list-style: circle; }

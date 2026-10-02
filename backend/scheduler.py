@@ -42,6 +42,8 @@ SCHEDULE_MINUTE_UTC = 0
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 _APP_ROOT = os.path.dirname(_BACKEND_DIR)
 _ETL_ENTRY = os.path.join(_APP_ROOT, "etl", "run.py")
+_BRIEFS_ENTRY = os.path.join(_APP_ROOT, "etl", "refresh_briefs.py")
+BRIEF_MAX_AGE = timedelta(days=8)
 
 # Only one ETL run at a time. Non-blocking: a tick that arrives mid-run is
 # skipped rather than queued.
@@ -74,6 +76,26 @@ def _db_is_unseeded() -> bool:
         return True
 
 
+def _briefs_are_stale() -> bool:
+    """True when the newest AI brief is older than BRIEF_MAX_AGE (or missing)."""
+    try:
+        from sqlalchemy import func
+
+        from db import SessionLocal
+        from models import TopicBrief
+
+        with SessionLocal() as db:
+            newest = db.query(func.max(TopicBrief.generated_at)).scalar()
+        if not newest:
+            return True
+        age = datetime.now(timezone.utc) - datetime.fromisoformat(str(newest).replace("Z", "+00:00"))
+        logger.info("scheduler: newest brief is %.1f days old", age.total_seconds() / 86400)
+        return age > BRIEF_MAX_AGE
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("scheduler: could not check brief age (%s)", exc)
+        return False
+
+
 def _log_run(reason: str, started: str, finished: str | None, ok: bool, code: int | None) -> None:
     """Best-effort ETL run log (etl_run table); never let logging break the scheduler."""
     try:
@@ -86,7 +108,7 @@ def _log_run(reason: str, started: str, finished: str | None, ok: bool, code: in
         logger.warning("scheduler: could not record ETL run: %s", exc)
 
 
-def _run_etl(reason: str) -> None:
+def _run_etl(reason: str, entry: str = _ETL_ENTRY) -> None:
     """Run the ETL as an isolated subprocess; stream its output to our logs.
 
     Overlap guard: if a run is already in progress we skip this one.
@@ -95,7 +117,7 @@ def _run_etl(reason: str) -> None:
         logger.warning("scheduler: ETL already running; skipping this %s trigger", reason)
         return
     try:
-        logger.info("scheduler: starting ETL (%s) → %s", reason, _ETL_ENTRY)
+        logger.info("scheduler: starting ETL (%s) → %s", reason, entry)
         start = time.monotonic()
         started_iso = datetime.now(timezone.utc).isoformat()
         # cwd=_APP_ROOT so `python etl/run.py` puts /app/etl on sys.path[0]
@@ -103,7 +125,7 @@ def _run_etl(reason: str) -> None:
         # ../backend resolution lands on /app/backend. DATABASE_URL /
         # OPENALEX_API_KEY / GROQ_API_KEY are inherited from the process env.
         proc = subprocess.Popen(
-            [sys.executable, _ETL_ENTRY],
+            [sys.executable, entry],
             cwd=_APP_ROOT,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -147,6 +169,11 @@ def _scheduler_loop() -> None:
         _run_etl("initial-populate")
     else:
         logger.info("scheduler: DB already seeded → skipping initial populate")
+        # (a2) Self-heal stale briefs (the weekly run keeps the old brief when
+        # the LLM call fails) without waiting for a full weekly ETL.
+        if os.path.exists(_BRIEFS_ENTRY) and _briefs_are_stale():
+            logger.info("scheduler: briefs are stale → refreshing briefs only")
+            _run_etl("refresh-briefs", _BRIEFS_ENTRY)
 
     # (b) Weekly cadence forever after.
     while True:

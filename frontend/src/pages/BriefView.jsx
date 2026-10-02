@@ -18,32 +18,59 @@ function CopyButton({ text }) {
   );
 }
 
-function BriefText({ text }) {
-  const lines = text.split("\n");
-  const elements = [];
-  let key = 0;
+// Inline Markdown → React (no innerHTML): **bold** and *italic* only.
+function inline(text, keyBase) {
+  const out = [];
+  const re = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g;
+  let last = 0, m, i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const tok = m[0];
+    out.push(tok.startsWith("**")
+      ? <strong key={`${keyBase}-${i++}`}>{tok.slice(2, -2)}</strong>
+      : <em key={`${keyBase}-${i++}`}>{tok.slice(1, -1)}</em>);
+    last = m.index + tok.length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      elements.push(
-        <h2 key={key++} className="subhead" style={{
-          marginTop: "var(--sp-5)",
-          marginBottom: "var(--sp-2)",
-        }}>
-          {line.slice(3)}
-        </h2>
-      );
+// Block Markdown the brief models actually emit: ## / ### headings, - or * bullets
+// (one nesting level), paragraphs. Tables are flattened to "a · b · c" lines and
+// rules dropped, so an unexpected format still reads cleanly.
+function BriefText({ text }) {
+  const elements = [];
+  let list = null;
+  let key = 0;
+  const flush = () => {
+    if (list) { elements.push(<ul key={key++} className="brief-list">{list}</ul>); list = null; }
+  };
+  for (const raw of text.split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    const heading = line.match(/^\s*\**\s*(#{2,3})\s+(.+?)\**\s*$/);
+    const bullet = line.match(/^(\s*)[-*•]\s+(.*)$/);
+    if (heading) {
+      flush();
+      const Tag = heading[1].length === 2 ? "h2" : "h3";
+      elements.push(<Tag key={key++} className="subhead brief-h">{inline(heading[2].replace(/\*\*/g, ""), key)}</Tag>);
+    } else if (bullet) {
+      list ??= [];
+      list.push(<li key={key++} className={bullet[1].length >= 2 ? "brief-sub" : undefined}>{inline(bullet[2], key)}</li>);
+    } else if (/^\s*\|?\s*:?-{3,}/.test(line) || /^\s*-{3,}\s*$/.test(line)) {
+      continue; // table separator row or horizontal rule
+    } else if (line.trim().startsWith("|")) {
+      flush();
+      const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+      elements.push(<p key={key++} className="body-text brief-row">{inline(cells.join(" · "), key)}</p>);
     } else if (line.trim() === "") {
-      elements.push(<div key={key++} style={{ height: "var(--sp-2)" }} />);
+      flush();
     } else {
-      elements.push(
-        <p key={key++} className="body-text" style={{ margin: 0 }}>
-          {line}
-        </p>
-      );
+      flush();
+      elements.push(<p key={key++} className="body-text brief-p">{inline(line.trim(), key)}</p>);
     }
   }
-  return <div>{elements}</div>;
+  flush();
+  return <div className="brief-text">{elements}</div>;
 }
 
 export default function BriefView({ topicId }) {
