@@ -83,3 +83,4 @@ GitHub Actions cron.
 | GET | `/api/institutions` | Ranked partner shortlist (filters: topic, country, type, min_score) |
 | GET | `/api/institutions/{id}` | Institution profile + Partner Fit Score breakdown |
 | GET | `/api/graph` | Nodes + edges for the collaboration network |
+| GET | `/api/calls?topic=` | Open + forthcoming Horizon Europe calls matched to a topic, nearest deadline first. Read from the EU Funding & Tenders portal, cached 12 h; `stale: true` when the portal is unreachable. Tests: `pip install -r backend/requirements-dev.txt && pytest backend/tests` |

@@ -66,3 +66,27 @@ class WorkSearchResult(BaseModel):
     cited_by_count: int = 0
     abstract_snippet: str = ""
     similarity: float = 0.0
+
+
+class CallOut(BaseModel):
+    identifier: str                      # e.g. HORIZON-CL5-2027-01-D1-10
+    title: str
+    type_of_action: Optional[str] = None  # RIA | IA | CSA | COFUND | PCP | …
+    status: str                          # open | forthcoming
+    deadlines: list[str] = []            # ISO dates still ahead, earliest first
+    next_deadline: Optional[str] = None
+    days_left: Optional[int] = None
+    budget_eur: Optional[float] = None   # total indicative budget of this topic
+    max_contribution_eur: Optional[float] = None  # EU contribution per project (upper bound)
+    expected_grants: Optional[int] = None
+    call_identifier: Optional[str] = None
+    call_title: Optional[str] = None
+    url: str                             # Funding & Tenders Portal topic page
+    match_score: float = 0.0             # 0..1 fit with the requested noda topic
+
+
+class CallsOut(BaseModel):
+    topic_id: int
+    calls: list[CallOut]
+    fetched_at: Optional[str] = None     # when the portal was last read (UTC ISO)
+    stale: bool = False                  # True when serving an expired cache (or nothing) because the portal is unreachable

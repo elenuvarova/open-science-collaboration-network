@@ -1,4 +1,5 @@
 import os
+import threading
 
 from fastapi import FastAPI
 from fastapi import Request
@@ -9,8 +10,9 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from db import Base, db_kind, engine
+from eu_calls import get_calls
 from ratelimit import limiter
-from routers import brief, graph, health, institutions, search, topics
+from routers import brief, calls, graph, health, institutions, search, topics
 from scheduler import start_scheduler
 
 # Models register on Base via import; create tables if missing (no-op when they exist).
@@ -67,6 +69,7 @@ app.include_router(institutions.router)
 app.include_router(graph.router)
 app.include_router(brief.router)
 app.include_router(search.router)
+app.include_router(calls.router)
 
 
 @app.on_event("startup")
@@ -75,6 +78,10 @@ def _start_etl_scheduler() -> None:
     # immediately — never blocks the port bind or the event loop. The thread
     # populates an empty DB once, then runs the ETL weekly (Mon 04:00 UTC).
     start_scheduler()
+    # Warm the Horizon calls cache off the request path so the first visit to the
+    # Calls page isn't the one that pays for the fetch + embedding (~20 s).
+    if os.environ.get("CALLS_WARMUP", "1") == "1":
+        threading.Thread(target=get_calls, name="calls-warmup", daemon=True).start()
 
 if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") == "1":
     public_dir = os.path.join(os.path.dirname(__file__), "public")

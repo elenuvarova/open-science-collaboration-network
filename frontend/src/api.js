@@ -13,3 +13,6 @@ export const getGraph = (params = {}) => get("/graph?" + new URLSearchParams(par
 export const getBrief = (topicId) => get(`/brief?topic=${topicId}`);
 export const searchWorks = (q, topicId, limit = 10) =>
   get(`/search?q=${encodeURIComponent(q)}&topic=${topicId}&limit=${limit}`);
+// Open + forthcoming Horizon Europe call topics matched to a noda topic,
+// nearest deadline first. { topic_id, calls: CallOut[], fetched_at, stale }.
+export const getCalls = (topicId) => get(`/calls?topic=${topicId}`);

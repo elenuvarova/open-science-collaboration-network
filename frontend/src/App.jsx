@@ -4,6 +4,7 @@ import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
 import BriefView from "./pages/BriefView";
 import SearchView from "./pages/SearchView";
+import CallsView from "./pages/CallsView";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
 import { track } from "./analytics";
@@ -15,6 +16,7 @@ const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
   { id: "network",   label: "Network Map" },
   { id: "gaps",      label: "Consortium Gaps" },
+  { id: "calls",     label: "Calls" },
   { id: "brief",     label: "AI Brief" },
   { id: "search",    label: "Search" },
 ];
@@ -84,6 +86,17 @@ export default function App() {
       track(removing ? "partner_removed" : "partner_added", { topic: topicId, size: next.length });
       return { ...prev, [topicId]: next };
     });
+  }
+
+  // "Build consortium for this call" on the Calls page: remember the call and jump to
+  // the shortlist (same topic — calls are matched per topic). activeCall is what a
+  // DeadlineBanner on the shortlist will read; nothing renders it there yet.
+  const [activeCall, setActiveCall] = useState(null);
+  function startFromCall(call) {
+    setActiveCall(call);
+    setProfileId(null);
+    setPage("shortlist");
+    track("call_consortium_started", { topic: topicId });
   }
 
   function clearConsortium() {
@@ -209,6 +222,7 @@ export default function App() {
           </Suspense>
         )}
         {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} />}
+        {topicId && page === "calls"     && <CallsView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} onBuildConsortium={startFromCall} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
       </main>
