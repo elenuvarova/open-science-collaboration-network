@@ -83,7 +83,7 @@ export default function App() {
   const pageLabel = HIDDEN_LABELS[page] || PAGES.find(p => p.id === page)?.label || "";
   // Not while the tour is open: its dialog owns focus (this effect runs after the
   // tour's own focus call and used to pull focus out of the modal).
-  useEffect(() => { if (!showTour) headingRef.current?.focus(); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!showTour) headingRef.current?.focus(); setSharedNotice(null); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Consortium is scoped per topic (an org's Partner Fit Score only means
   // something within the topic it was matched on) and persisted to localStorage
@@ -211,6 +211,8 @@ export default function App() {
     const onHash = () => {
       const h = parseHash();
       if (h.page) setPage(h.page);
+      // The profile is part of the hash: #/shortlist/1/3572 opens it, #/shortlist/1 closes it.
+      if ((h.page ?? "shortlist") === "shortlist") setProfileId(h.instId ?? null);
       if (h.topicId != null && topicsRef.current.some((t) => t.id === h.topicId)) setTopicId(h.topicId);
       if (h.shared?.length) setSharedIds(h.shared);
       if (h.page === "compare" && h.ids.length) {

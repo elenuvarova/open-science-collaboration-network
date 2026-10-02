@@ -253,7 +253,9 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--w-semibold)", color: "var(--text-1)" }}>
               My Consortium ({consortium.length})
             </span>
-            <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+            {/* flex-basis 260px: on narrow screens the chips take their own full-width
+                line instead of being squeezed into a sliver beside the label. */}
+            <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", flex: "1 1 260px", minWidth: 0 }}>
               {consortium.map(inst => (
                 <button key={inst.id} className="tag" aria-label={`Remove ${inst.name} from consortium`}
                   style={{ display: "inline-flex", alignItems: "center", gap: "var(--sp-1)" }}

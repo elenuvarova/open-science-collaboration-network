@@ -65,11 +65,15 @@ function EvidenceBody({ data }) {
   return (
     <>
       <div className="evidence-totals" role="group" aria-label="Evidence totals">
-        <Stat value={totals.projects} label="EU projects on this topic" />
+        <Stat value={totals.projects} label="EU projects strictly on topic" />
         <Stat value={totals.coordinator} label="as coordinator" />
         {/* The ETL doesn't store EC amounts yet; show the stat only when there is one. */}
         {totals.ec_contribution > 0 && <Stat value={fmtEur(totals.ec_contribution)} label="EC funding" />}
       </div>
+      <p className="muted evidence-note">
+        Strict match: a topic keyword in the project title, or two in its summary. The EU-project count in the
+        score above takes any single keyword match, so it is usually higher.
+      </p>
       {totals.ec_contribution > 0 && (
         <p className="muted evidence-note">Funding is each project’s total EC contribution, not this institution’s share.</p>
       )}
