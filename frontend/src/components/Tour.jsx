@@ -5,7 +5,7 @@ import Icon from "./Icon";
 const STEPS = [
   {
     title: "Find the right research partners before writing the grant",
-    body: "Open Science Collaboration Network maps who researches what, who collaborates with whom, and where your consortium has gaps — using open data from OpenAlex and CORDIS.",
+    body: "noda maps who researches what, who collaborates with whom, and where your consortium has gaps — using open data from OpenAlex and CORDIS.",
     img: "🔬",
   },
   {

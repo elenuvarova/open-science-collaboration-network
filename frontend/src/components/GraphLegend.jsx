@@ -35,7 +35,7 @@ export default function GraphLegend({ communities = [] }) {
       </button>
 
       {open && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)", maxHeight: 180, overflow: "auto", marginTop: 2 }}>
+        <div tabIndex={0} role="region" aria-label="Cluster colours" style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)", maxHeight: 180, overflow: "auto", marginTop: 2 }}>
           {items.map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.color || COMMUNITY_COLORS[i % COMMUNITY_COLORS.length], border: "1px solid var(--text-1)", flexShrink: 0 }} />

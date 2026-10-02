@@ -282,21 +282,16 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           <div
             key={inst.id}
             className={`inst-row${inConsortium ? " in-consortium" : ""}`}
-            role="button"
-            tabIndex={0}
+            // Mouse users can click anywhere on the row; keyboard and screen-reader
+            // users get the name button below (a row-as-button can't contain the
+            // consortium toggle — nested interactive controls, WCAG 4.1.2).
             onClick={() => onOpenProfile(inst.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpenProfile(inst.id);
-              }
-            }}
             onMouseEnter={(e) => onMouseEnter(inst, e.currentTarget)}
             onMouseLeave={onMouseLeave}
           >
             <span className="inst-rank">{i + 1}</span>
             <div className="inst-info">
-              <div className="inst-name">{inst.name}</div>
+              <button type="button" className="inst-name inst-name-btn" onClick={(e) => { e.stopPropagation(); onOpenProfile(inst.id); }}>{inst.name}</button>
               <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: "var(--sp-1)" }}>
                 <TypeBadge type={inst.type} />
                 <span>{inst.country}</span>

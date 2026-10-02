@@ -21,10 +21,10 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   const textColor = v("--text-1", "#12121e");
   const bgColor = v("--bg", "#e5e4ea");
   const borderColor = v("--border", "#cfced9");
-  // Project edges tint with the accent so they track the theme; cytoscape can't
-  // read CSS var(), so resolve --accent and append an alpha byte (88 ≈ 53%).
+  // Project edges use the accent. Cytoscape rejects 8-digit hex (#rrggbbaa) and
+  // silently drops the rule, so transparency goes through line-opacity instead.
   const accentColor = v("--accent", "#1257b8");
-  const projectEdgeColor = `${accentColor}88`;
+  const projectEdgeColor = accentColor;
   const pairColor = v("--pair", "#e0261b");
 
   // Derive unique communities for legend
@@ -120,6 +120,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       selector: 'edge[type="project"]',
       style: {
         "line-color": projectEdgeColor,
+        "line-opacity": 0.55,
         "line-style": "dashed",
         "line-dash-pattern": [4, 3],
         opacity: 0.6,
@@ -251,17 +252,23 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   return (
     <div
       ref={containerRef}
-      role="img"
-      aria-label={`Collaboration network: ${nodes.length} institutions across ${communities.length} clusters`}
+      role="group"
+      aria-label="Collaboration network"
       style={{ position: "absolute", inset: 0 }}
     >
-      <CytoscapeComponent
-        elements={elements}
-        stylesheet={stylesheet}
-        layout={layout}
-        style={{ width: "100%", height: "100%" }}
-        cy={(cy) => { cyRef.current = cy; setReady(true); }}
-      />
+      <div
+        role="img"
+        aria-label={`Collaboration network: ${nodes.length} institutions across ${communities.length} clusters`}
+        style={{ position: "absolute", inset: 0 }}
+      >
+        <CytoscapeComponent
+          elements={elements}
+          stylesheet={stylesheet}
+          layout={layout}
+          style={{ width: "100%", height: "100%" }}
+          cy={(cy) => { cyRef.current = cy; setReady(true); }}
+        />
+      </div>
       <ul className="sr-only-focusable">
         {srNodes.map((n) => (
           <li key={n.id}>
