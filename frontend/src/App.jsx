@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { getTopics } from "./api";
-import NetworkMap from "./pages/NetworkMap";
 import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
 import BriefView from "./pages/BriefView";
@@ -8,6 +7,9 @@ import SearchView from "./pages/SearchView";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
 import { track } from "./analytics";
+
+// Cytoscape + layouts are ~500 KB — load them only when the map is opened.
+const NetworkMap = lazy(() => import("./pages/NetworkMap"));
 
 const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
@@ -201,7 +203,11 @@ export default function App() {
           </div>
         )}
         {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} />}
-        {topicId && page === "network"   && <NetworkMap topicId={topicId} />}
+        {topicId && page === "network"   && (
+          <Suspense fallback={<div className="spinner" role="status" aria-live="polite">Loading the network…</div>}>
+            <NetworkMap topicId={topicId} />
+          </Suspense>
+        )}
         {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}

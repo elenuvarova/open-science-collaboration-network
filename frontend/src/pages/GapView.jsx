@@ -53,7 +53,7 @@ function GapGrid({ institutions, isConsortium = false }) {
               <div className="gap-card-title">{role.label}</div>
               <div className={`gap-card-status gap-${level}`}>{label} <Icon name={glyph} size={16} /></div>
               <div className="muted" style={{ fontSize: "var(--text-xs)", marginTop: "var(--sp-1)" }}>
-                {count} {role.key === "geographic" ? "countries" : "institutions"}
+                {count} {role.key === "geographic" ? (count === 1 ? "country" : "countries") : (count === 1 ? "institution" : "institutions")}
               </div>
             </div>
           );

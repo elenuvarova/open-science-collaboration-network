@@ -221,7 +221,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           <option value={80}>Score 80+</option>
         </select>
         <span className="muted" role="status" aria-live="polite">
-          {!loading && `${list.length} institutions`}
+          {!loading && `${list.length} ${list.length === 1 ? "institution" : "institutions"}`}
         </span>
         {!loading && list.length > 0 && (
           <button
