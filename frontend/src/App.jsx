@@ -2,12 +2,6 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { getInstitution, getTopics } from "./api";
 import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
-import BriefView from "./pages/BriefView";
-import SearchView from "./pages/SearchView";
-import MethodologyView from "./pages/MethodologyView";
-import CallsView from "./pages/CallsView";
-import PipelineView from "./pages/PipelineView";
-import CompareView from "./pages/CompareView";
 import DeadlineBanner from "./components/DeadlineBanner";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
@@ -15,6 +9,13 @@ import { track } from "./analytics";
 
 // Cytoscape + layouts are ~500 KB — load them only when the map is opened.
 const NetworkMap = lazy(() => import("./pages/NetworkMap"));
+// Secondary pages load on first visit; Shortlist and Gaps stay in the main chunk.
+const BriefView = lazy(() => import("./pages/BriefView"));
+const SearchView = lazy(() => import("./pages/SearchView"));
+const MethodologyView = lazy(() => import("./pages/MethodologyView"));
+const CallsView = lazy(() => import("./pages/CallsView"));
+const PipelineView = lazy(() => import("./pages/PipelineView"));
+const CompareView = lazy(() => import("./pages/CompareView"));
 
 const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
@@ -338,12 +339,14 @@ export default function App() {
           </Suspense>
         )}
         {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} onToggleConsortium={toggleConsortium} />}
-        {topicId && page === "pipeline"  && <PipelineView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} consortium={consortium} activeCall={activeCall} />}
-        {topicId && page === "calls"     &&<CallsView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} onBuildConsortium={startFromCall} />}
-        {topicId && page === "brief"     && <BriefView topicId={topicId} />}
-        {topicId && page === "search"    && <SearchView topicId={topicId} />}
-        {topicId && page === "method"    && <MethodologyView />}
-        {topicId && page === "compare"   && <CompareView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} ids={compare.map(c => c.id)} consortium={consortium} onToggleConsortium={toggleConsortium} onOpenProfile={openProfileFromCompare} onBack={() => setPage("shortlist")} onResolve={resolveCompare} />}
+        <Suspense fallback={<div className="spinner" role="status" aria-live="polite">Loading…</div>}>
+          {topicId && page === "pipeline"  && <PipelineView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} consortium={consortium} activeCall={activeCall} />}
+          {topicId && page === "calls"     && <CallsView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} onBuildConsortium={startFromCall} />}
+          {topicId && page === "brief"     && <BriefView topicId={topicId} />}
+          {topicId && page === "search"    && <SearchView topicId={topicId} />}
+          {topicId && page === "method"    && <MethodologyView />}
+          {topicId && page === "compare"   && <CompareView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} ids={compare.map(c => c.id)} consortium={consortium} onToggleConsortium={toggleConsortium} onOpenProfile={openProfileFromCompare} onBack={() => setPage("shortlist")} onResolve={resolveCompare} />}
+        </Suspense>
       </main>
     </div>
   );
