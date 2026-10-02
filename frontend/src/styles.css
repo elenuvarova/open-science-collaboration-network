@@ -286,7 +286,7 @@ a:hover { color: var(--accent-h); }
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-full); /* round icon buttons, matching the graph zoom controls */
   border: 1px solid var(--border);
   background: none;
   color: var(--text-2);
@@ -393,7 +393,8 @@ a:hover { color: var(--accent-h); }
   font-weight: var(--w-semibold);
   line-height: 1;
   padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--r-md);
+  /* Full pill, like the landing CTAs and the button references (one shape everywhere). */
+  border-radius: var(--r-full);
   border: 1px solid transparent;
   cursor: pointer;
   white-space: nowrap;
@@ -1121,7 +1122,8 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   font-size: var(--text-sm);
 }
 .notice > svg { color: var(--green); }
-.notice .btn { margin-left: auto; }
+.notice > span { flex: 1 1 200px; }
+.notice .btn { margin-left: 0; }
 
 .method { max-width: 760px; }
 .method-head { margin-bottom: var(--sp-8); }
