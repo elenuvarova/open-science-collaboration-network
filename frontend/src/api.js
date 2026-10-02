@@ -22,3 +22,6 @@ export const getSuggestions = (topic, ids, role) => {
   if (role) p.set("role", role);
   return get("/suggest?" + p);
 };
+// Open + forthcoming Horizon Europe call topics matched to a noda topic,
+// nearest deadline first. { topic_id, calls: CallOut[], fetched_at, stale }.
+export const getCalls = (topicId) => get(`/calls?topic=${topicId}`);

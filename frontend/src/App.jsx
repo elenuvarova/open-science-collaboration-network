@@ -5,6 +5,8 @@ import GapView from "./pages/GapView";
 import BriefView from "./pages/BriefView";
 import SearchView from "./pages/SearchView";
 import MethodologyView from "./pages/MethodologyView";
+import CallsView from "./pages/CallsView";
+import DeadlineBanner from "./components/DeadlineBanner";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
 import { track } from "./analytics";
@@ -16,6 +18,7 @@ const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
   { id: "network",   label: "Network Map" },
   { id: "gaps",      label: "Consortium Gaps" },
+  { id: "calls",     label: "Calls" },
   { id: "brief",     label: "AI Brief" },
   { id: "search",    label: "Search" },
 ];
@@ -107,6 +110,16 @@ export default function App() {
         track("consortium_opened_shared", { topic: topicId, size: found.length });
       });
   }, [topicId]);
+  // "Build consortium for this call" on the Calls page: remember the call and jump to
+  // the shortlist (same topic — calls are matched per topic). activeCall drives the
+  // DeadlineBanner shown above the shortlist and the gap view.
+  const [activeCall, setActiveCall] = useState(null);
+  function startFromCall(call) {
+    setActiveCall(call);
+    setProfileId(null);
+    setPage("shortlist");
+    track("call_consortium_started", { topic: topicId });
+  }
 
   function clearConsortium() {
     if (topicId == null) return;
@@ -241,6 +254,9 @@ export default function App() {
             <button className="btn btn-primary" onClick={loadTopics}>Retry</button>
           </div>
         )}
+        {activeCall && (page === "shortlist" || page === "gaps") && (
+          <DeadlineBanner call={activeCall} onDismiss={() => setActiveCall(null)} onOpenPortal={() => track("call_opened", { topic: topicId })} />
+        )}
         {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} />}
         {topicId && page === "network"   && (
           <Suspense fallback={<div className="spinner" role="status" aria-live="polite">Loading the network…</div>}>
@@ -248,6 +264,7 @@ export default function App() {
           </Suspense>
         )}
         {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} onToggleConsortium={toggleConsortium} />}
+        {topicId && page === "calls"     && <CallsView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} onBuildConsortium={startFromCall} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
         {topicId && page === "method"    && <MethodologyView />}
