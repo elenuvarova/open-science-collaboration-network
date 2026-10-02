@@ -72,36 +72,53 @@ def _groq_brief(prompt: str):
     return resp.choices[0].message.content or "", model
 
 
-GEMINI_PREFERRED = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-pro-latest", "gemini-2.5-pro"]
+GEMINI_PREFERRED = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-pro-latest"]
 
 
 def _gemini_brief(prompt: str):
     """Google Gemini (free tier) via REST — the fallback when Groq is down or
-    has retired its models. Picks the first preferred model the key can use."""
+    has retired its models. Tries the preferred models in order, moving on when
+    one is overloaded (503) or rate-limited (429)."""
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         return None, None
+    import time
+
     import requests
     base = "https://generativelanguage.googleapis.com/v1beta"
     headers = {"x-goog-api-key": key}
-    model = os.environ.get("GEMINI_MODEL")
-    if not model:
+    if os.environ.get("GEMINI_MODEL"):
+        candidates = [os.environ["GEMINI_MODEL"]]
+    else:
         listed = requests.get(f"{base}/models", headers=headers, timeout=20)
         listed.raise_for_status()
         usable = [m["name"].split("/", 1)[1] for m in listed.json().get("models", [])
                   if "generateContent" in m.get("supportedGenerationMethods", [])]
-        model = next((m for m in GEMINI_PREFERRED if m in usable),
-                     next((m for m in usable if "flash" in m), usable[0] if usable else GEMINI_PREFERRED[0]))
-    r = requests.post(
-        f"{base}/models/{model}:generateContent",
-        headers=headers,
-        json={"contents": [{"parts": [{"text": prompt}]}],
-              "generationConfig": {"temperature": 0.3, "maxOutputTokens": 3000}},
-        timeout=120,
-    )
-    r.raise_for_status()
-    parts = r.json()["candidates"][0]["content"]["parts"]
-    return "".join(p.get("text", "") for p in parts), f"gemini/{model}"
+        candidates = [m for m in GEMINI_PREFERRED if m in usable] or [m for m in usable if "flash" in m][:2]
+    last_error = None
+    for model in candidates:
+        for attempt in range(2):
+            r = requests.post(
+                f"{base}/models/{model}:generateContent",
+                headers=headers,
+                json={"contents": [{"parts": [{"text": prompt}]}],
+                      "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8192}},  # thinking models spend part of it
+                timeout=120,
+            )
+            if r.status_code in (429, 500, 503):        # busy: wait, retry once
+                last_error = f"{model}: HTTP {r.status_code}"
+                time.sleep(3 * (attempt + 1))
+                continue
+            if r.status_code != 200:                     # e.g. 404 not enabled for this key
+                last_error = f"{model}: HTTP {r.status_code}"
+                break
+            parts = r.json()["candidates"][0]["content"]["parts"]
+            text = "".join(p.get("text", "") for p in parts)
+            if len(text.strip()) >= 1200:
+                return text, f"gemini/{model}"
+            last_error = f"{model}: short answer ({len(text)} chars)"
+            break
+    raise RuntimeError(f"all Gemini models busy ({last_error})")
 
 
 def _generate_brief(prompt: str):
@@ -116,7 +133,8 @@ def _generate_brief(prompt: str):
         if model is None:
             continue
         text = _clean_brief(text)
-        if len(text) >= 400:
+        # A 350–450-word brief is ~2,000+ characters; anything far shorter was cut off.
+        if len(text) >= 1200:
             return text, model
         print(f"  embed: {model} returned a too-short brief ({len(text)} chars)")
     print("  embed: BRIEF NOT UPDATED — no provider produced a usable brief")
