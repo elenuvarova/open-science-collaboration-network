@@ -6,6 +6,7 @@ import TypeBadge from "../components/TypeBadge";
 import { SCORE_MAX, SCORE_LABELS, SCORE_DESCRIPTIONS } from "../components/scoreMeta";
 import Icon from "../components/Icon";
 import EvidenceSection from "../components/EvidenceSection";
+import DeliverySection from "../components/DeliverySection";
 
 export default function InstitutionProfile({ id, topicId, onBack }) {
   const [inst, setInst] = useState(null);
@@ -90,6 +91,7 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
 
         <div className="divider" />
         <EvidenceSection id={id} topicId={topicId} />
+        <DeliverySection id={id} topicId={topicId} />
       </div>
     </div>
   );

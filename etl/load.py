@@ -167,6 +167,25 @@ def bulk_upsert_projects(db, rows):
     return id_map
 
 
+_OUTPUT_SET_COLS = ("deliverables", "demonstrators", "datasets", "reports", "other",
+                    "publications", "updated_at")
+
+
+def bulk_upsert_project_outputs(db, rows):
+    """rows: dicts with project_id + _OUTPUT_SET_COLS, unique on project_id.
+    Idempotent: re-running with the same counts rewrites the same values."""
+    if not rows:
+        return
+    ins = _dialect_insert()
+    for chunk in _chunks(rows, 500):
+        stmt = ins(models.ProjectOutput).values(chunk)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["project_id"],
+            set_={c: getattr(stmt.excluded, c) for c in _OUTPUT_SET_COLS},
+        )
+        db.execute(stmt)
+
+
 def bulk_upsert_works(db, rows):
     """rows: dicts with openalex_id, topic_id + the _WORK_SET_COLS. Returns
     {openalex_id: id}. Stored so embeddings + semantic search have content.
@@ -236,6 +255,7 @@ __all__ = [
     "add_edge",
     "bulk_upsert_institutions",
     "bulk_upsert_projects",
+    "bulk_upsert_project_outputs",
     "bulk_upsert_works",
     "insert_project_participants",
     "replace_topic_metrics",

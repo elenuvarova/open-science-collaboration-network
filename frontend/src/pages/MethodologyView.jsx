@@ -41,6 +41,7 @@ export default function MethodologyView() {
         <ul>
           <li><b>OpenAlex</b> (CC0). For each topic, the 1,000 most-cited works from 2020–2025 with at least one European institution. Co-authorship between institutions becomes a link in the network.</li>
           <li><b>CORDIS</b> (CC BY 4.0). Horizon Europe and Horizon 2020 projects whose title or abstract matches the topic’s keywords. Shared projects become links too.</li>
+          <li><b>CORDIS outputs</b> (CC BY 4.0). The public deliverables and publications CORDIS lists for each Horizon Europe and Horizon 2020 project, behind the delivery record on an institution’s profile. They are counted per project and summed over the EU projects matched to the institution, so they describe the projects, not the partner: no deliverable is credited to one member of a consortium. A project with none listed may simply be too recent. Publications of any type count, and CORDIS doesn’t say whether they are open access.</li>
           <li><b>ROR</b> (CC0). Organisation identifiers and types (education, company, government…), used for the type badges and the roles in Consortium Gaps.</li>
         </ul>
       </section>
