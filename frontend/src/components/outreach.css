@@ -1,0 +1,112 @@
+/* Outreach kit: the draft-message dialog and the printable meeting card.
+   Tokens from styles.css; dialog chrome and print basics live in modal.css. */
+
+.modal-foot-end { margin-left: auto; }
+
+/* ── Draft message ── */
+.outreach-hint { margin-bottom: var(--sp-3); }
+.outreach-status { min-height: 1.5em; }
+.outreach-status:empty { min-height: 0; }
+
+.outreach-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: var(--text-sm);
+}
+.outreach-alert .icon { flex-shrink: 0; }
+.outreach-alert .btn { color: inherit; margin-left: auto; }
+
+.outreach-label {
+  display: block;
+  margin-bottom: var(--sp-1);
+  font-size: var(--text-sm);
+  font-weight: var(--w-semibold);
+  color: var(--text-1);
+}
+.outreach-text {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  white-space: pre-wrap;
+}
+.outreach-text:disabled { background: var(--surface-2); color: var(--text-3); }
+.outreach-text:focus { border-color: var(--accent); }
+.outreach-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.outreach-notice { min-height: 1.5em; margin: var(--sp-1) 0 0; }
+
+/* ── Meeting card (A6-ish) ── */
+.meeting-card {
+  width: min(105mm, 100%);
+  margin: 0 auto;
+  padding: 6mm;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-1);
+}
+.meeting-card-name {
+  margin: var(--sp-2) 0 var(--sp-2);
+  font-size: var(--text-xl);
+  font-weight: var(--w-semibold);
+  letter-spacing: -0.02em;
+  line-height: var(--leading-snug);
+}
+.meeting-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.meeting-card .type-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.meeting-card-score { margin: var(--sp-4) 0 0; }
+.meeting-card-num {
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-size: 40px;
+  line-height: 1;
+}
+.meeting-card-h { margin: var(--sp-4) 0 var(--sp-2); }
+.meeting-card-lines { margin: 0; padding-left: var(--sp-4); display: grid; gap: var(--sp-2); font-size: var(--text-sm); line-height: var(--leading-snug); }
+.meeting-card-call { margin: var(--sp-4) 0 0; font-size: var(--text-xs); }
+.meeting-card-link {
+  margin: var(--sp-4) 0 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-sub);
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  .meeting-card {
+    width: 100%;
+    margin: 0;
+    border: 1px solid #000;
+    border-radius: 0;
+    break-inside: avoid;
+  }
+}

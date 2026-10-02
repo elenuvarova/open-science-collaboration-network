@@ -1,0 +1,200 @@
+/* Partner pipeline page (pages/PipelineView.jsx). Tokens from styles.css. */
+
+.pipeline {
+  /* The palette has no amber (see styles.css), but "locks soon" needs a warning step
+     between calm and red. Text 7.5:1 on its background. */
+  --amber:    #6b4500;
+  --amber-bg: #fff0c4;
+  --amber-bd: #d4a017;
+}
+
+.pipeline-intro { max-width: 760px; margin-bottom: var(--sp-4); }
+
+/* ── Header strip: counts, lock chip, export ── */
+.pipeline-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+.pipeline-counts {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.pipeline-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border-sub);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.pipeline-count strong {
+  color: var(--text-1);
+  font-weight: var(--w-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.pipeline-lock { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; flex: 1 1 260px; }
+.pipeline-lock p { margin: 0; }
+.pipeline-quiet-link { font-size: var(--text-sm); color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.pipeline-quiet-link:hover { color: var(--accent-h); }
+
+.lock-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-self: flex-start;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.lock-chip .icon { flex-shrink: 0; }
+.lock-soon { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); }
+.lock-late { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+
+.pipeline-export { margin-left: auto; }
+
+/* ── Board: six columns on a wide screen, three on a tablet, a grouped list on a phone ── */
+.pipeline-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-2);
+  align-items: start;
+}
+
+.pipeline-col {
+  min-width: 0;
+  padding: var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--surface-3);
+  border: 1px solid var(--border-sub);
+}
+.pipeline-col.is-over { border-color: var(--accent); background: var(--accent-sub); }
+
+.pipeline-col-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-2);
+  font-size: var(--text-sm);
+  font-weight: var(--w-semibold);
+  color: var(--text-1);
+}
+.pipeline-col-count {
+  min-width: 22px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  font-size: var(--text-xs);
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pipeline-col-empty { padding: var(--sp-2) var(--sp-1); }
+
+.pipeline-cards { list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
+
+@media (max-width: 1199px) {
+  .pipeline-board { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+}
+
+/* Phone: one column, grouped by status. Empty groups are left out (the counts in the
+   strip above still list every status). */
+@media (max-width: 699px) {
+  .pipeline-board { grid-template-columns: minmax(0, 1fr); }
+  .pipeline-col.is-empty { display: none; }
+  .pipeline-strip { gap: var(--sp-3); }
+  .pipeline-export { margin-left: 0; }
+}
+
+/* ── Card ── */
+.pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.pipeline-card-head { cursor: default; }
+.pipeline-card-head[draggable="true"] { cursor: grab; }
+.pipeline-card-name {
+  font-size: var(--text-base);
+  font-weight: var(--w-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+.pipeline-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.pipeline-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.pipeline-status { width: 100%; }
+
+.pipeline-checks { display: flex; flex-direction: column; gap: 0; border: 0; min-width: 0; }
+.pipeline-checks legend { padding: 0; margin-bottom: var(--sp-1); }
+.pipeline-check-count { margin-left: var(--sp-1); font-variant-numeric: tabular-nums; }
+.pipeline-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-height: 24px;
+  padding: 3px 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-1);
+  cursor: pointer;
+}
+.pipeline-check input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--text-1);
+  cursor: pointer;
+}
+
+.pipeline-note {
+  width: 100%;
+  resize: vertical;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+.pipeline-note:focus { border-color: var(--accent); }
+
+.pipeline-card-actions { display: grid; gap: var(--sp-2); }
+.pipeline-card-actions .btn { width: 100%; }
+.pipeline-updated { margin: 0; font-size: var(--text-xs); }
+
+@media (hover: none) {
+  .pipeline-check { min-height: 44px; align-items: center; }
+  .pipeline-check input { width: 22px; height: 22px; }
+}

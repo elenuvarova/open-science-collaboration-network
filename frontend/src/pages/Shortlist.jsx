@@ -159,7 +159,7 @@ function HoverCard({ inst, anchor }) {
   );
 }
 
-export default function Shortlist({ topicId, consortium = [], onToggleConsortium, onGoToGaps, profileId = null, onOpenProfile, onCloseProfile }) {
+export default function Shortlist({ topicId, consortium = [], onToggleConsortium, onGoToGaps, onGoToPipeline, profileId = null, onOpenProfile, onCloseProfile }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [country, setCountry] = useState("");
@@ -248,11 +248,18 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
               Export consortium
             </button>
           </div>
-          {onGoToGaps && (
+          {(onGoToGaps || onGoToPipeline) && (
             <div style={{ marginTop: "var(--sp-2)" }}>
-              <button className="btn btn-ghost btn-sm" onClick={onGoToGaps}>
-                → Check role coverage
-              </button>
+              {onGoToGaps && (
+                <button className="btn btn-ghost btn-sm" onClick={onGoToGaps}>
+                  → Check role coverage
+                </button>
+              )}
+              {onGoToPipeline && (
+                <button className="btn btn-ghost btn-sm" onClick={onGoToPipeline}>
+                  → Track outreach
+                </button>
+              )}
             </div>
           )}
         </div>

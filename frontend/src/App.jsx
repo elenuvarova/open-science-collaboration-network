@@ -6,6 +6,7 @@ import BriefView from "./pages/BriefView";
 import SearchView from "./pages/SearchView";
 import MethodologyView from "./pages/MethodologyView";
 import CallsView from "./pages/CallsView";
+import PipelineView from "./pages/PipelineView";
 import DeadlineBanner from "./components/DeadlineBanner";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
@@ -18,7 +19,8 @@ const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
   { id: "network",   label: "Network Map" },
   { id: "gaps",      label: "Consortium Gaps" },
-  { id: "calls",     label: "Calls" },
+  { id: "pipeline",  label: "Pipeline" },
+  { id: "calls",    label: "Calls" },
   { id: "brief",     label: "AI Brief" },
   { id: "search",    label: "Search" },
 ];
@@ -170,7 +172,8 @@ export default function App() {
     }
   }, [page, topicId, profileId]);
 
-  const isWide = page === "network";
+  // The map and the pipeline board want the full width (six columns).
+  const isWide = page === "network" || page === "pipeline";
 
   return (
     <div className="layout">
@@ -257,14 +260,21 @@ export default function App() {
         {activeCall && (page === "shortlist" || page === "gaps") && (
           <DeadlineBanner call={activeCall} onDismiss={() => setActiveCall(null)} onOpenPortal={() => track("call_opened", { topic: topicId })} />
         )}
-        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} />}
+        {page === "gaps" && consortium.length > 0 && (
+          // GapView stays untouched; this is its way into the pipeline.
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--sp-2)" }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setPage("pipeline")}>→ Track outreach</button>
+          </div>
+        )}
+        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} onGoToPipeline={() => setPage("pipeline")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} />}
         {topicId && page === "network"   && (
           <Suspense fallback={<div className="spinner" role="status" aria-live="polite">Loading the network…</div>}>
             <NetworkMap topicId={topicId} />
           </Suspense>
         )}
         {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} onToggleConsortium={toggleConsortium} />}
-        {topicId && page === "calls"     && <CallsView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} onBuildConsortium={startFromCall} />}
+        {topicId && page === "pipeline"  && <PipelineView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} consortium={consortium} activeCall={activeCall} />}
+        {topicId && page === "calls"     &&<CallsView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} onBuildConsortium={startFromCall} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
         {topicId && page === "method"    && <MethodologyView />}
