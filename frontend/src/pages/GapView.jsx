@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getInstitutions } from "../api";
 import EmptyState from "../components/EmptyState";
 import Icon from "../components/Icon";
+import SuggestedPartners from "../components/SuggestedPartners";
 
 const ROLES = [
   { key: "research",   label: "Research lead",        types: ["education", "university"] },
@@ -72,7 +73,7 @@ function GapGrid({ institutions, isConsortium = false }) {
   );
 }
 
-export default function GapView({ topicId, consortium = [], onClearConsortium }) {
+export default function GapView({ topicId, consortium = [], onClearConsortium, onToggleConsortium }) {
   const [institutions, setInstitutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -153,6 +154,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
       ) : (
         <GapGrid institutions={activeInstitutions} isConsortium={mode === "consortium"} />
       )}
+      {mode === "consortium" && <SuggestedPartners topicId={topicId} consortium={consortium} onToggleConsortium={onToggleConsortium} />}
     </div>
   );
 }

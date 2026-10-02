@@ -66,3 +66,53 @@ class WorkSearchResult(BaseModel):
     cited_by_count: int = 0
     abstract_snippet: str = ""
     similarity: float = 0.0
+
+
+# --- Partner evidence + suggestions -----------------------------------------
+
+class EvidenceProject(BaseModel):
+    id: int
+    title: str
+    programme: Optional[str] = None
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
+    role: str  # coordinator | participant
+    ec_contribution: Optional[float] = None  # whole-project EC funding, EUR
+
+
+class EvidenceTotals(BaseModel):
+    projects: int = 0
+    coordinator: int = 0
+    ec_contribution: float = 0.0  # summed over the institution's projects
+
+
+class CoPartner(BaseModel):
+    id: int
+    name: str
+    country: Optional[str] = None
+    type: Optional[str] = None
+    edge_types: list[str] = []  # subset of coauthor | project
+    weight: float = 0.0
+
+
+class EvidenceOut(BaseModel):
+    institution_id: int
+    topic_id: Optional[int] = None
+    projects: list[EvidenceProject] = []
+    totals: EvidenceTotals = EvidenceTotals()
+    co_partners: list[CoPartner] = []
+    # No works<->institution link exists in the schema yet, so this stays
+    # unset and is dropped from the response (response_model_exclude_none).
+    recent_works: Optional[list[WorkSearchResult]] = None
+
+
+class SuggestionOut(BaseModel):
+    id: int
+    name: str
+    country: Optional[str] = None
+    type: Optional[str] = None
+    partner_fit_score: float = 0.0
+    eu_projects: int = 0
+    score: float = 0.0  # blended rank score, 0-100
+    linked_partners: int = 0  # how many consortium members it is connected to
+    why: str = ""

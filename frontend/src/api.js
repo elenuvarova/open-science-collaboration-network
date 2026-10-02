@@ -13,3 +13,10 @@ export const getGraph = (params = {}) => get("/graph?" + new URLSearchParams(par
 export const getBrief = (topicId) => get(`/brief?topic=${topicId}`);
 export const searchWorks = (q, topicId, limit = 10) =>
   get(`/search?q=${encodeURIComponent(q)}&topic=${topicId}&limit=${limit}`);
+export const getEvidence = (id, topic) =>
+  get(`/institutions/${id}/evidence` + (topic ? `?topic=${topic}` : ""));
+export const getSuggestions = (topic, ids, role) => {
+  const p = new URLSearchParams({ topic, ids: ids.join(",") });
+  if (role) p.set("role", role);
+  return get("/suggest?" + p);
+};
