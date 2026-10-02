@@ -13,3 +13,5 @@ export const getGraph = (params = {}) => get("/graph?" + new URLSearchParams(par
 export const getBrief = (topicId) => get(`/brief?topic=${topicId}`);
 export const searchWorks = (q, topicId, limit = 10) =>
   get(`/search?q=${encodeURIComponent(q)}&topic=${topicId}&limit=${limit}`);
+export const getMeta = () => get("/meta");
+export const getBenchmark = (topicId) => get(`/benchmark?topic=${topicId}`);

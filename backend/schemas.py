@@ -66,3 +66,23 @@ class WorkSearchResult(BaseModel):
     cited_by_count: int = 0
     abstract_snippet: str = ""
     similarity: float = 0.0
+
+
+class MetaOut(BaseModel):
+    data_as_of: Optional[str] = None
+    topics: int = 0
+    institutions: int = 0
+    scores: int = 0
+    edges: int = 0
+    works: int = 0
+    projects: int = 0
+
+
+class BenchmarkOut(BaseModel):
+    topic_id: int
+    projects: int = 0
+    median_countries: Optional[float] = None
+    p25_countries: Optional[float] = None
+    p75_countries: Optional[float] = None
+    programmes: dict = {}
+    coordinator_types: dict = {}

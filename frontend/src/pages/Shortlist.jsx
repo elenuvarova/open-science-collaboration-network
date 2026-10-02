@@ -5,11 +5,55 @@ import TypeBadge from "../components/TypeBadge";
 import ScoreRing from "../components/ScoreRing";
 import SkeletonList from "../components/SkeletonList";
 import EmptyState from "../components/EmptyState";
-import { SCORE_MAX } from "../components/scoreMeta";
+import { SCORE_LABELS, SCORE_MAX } from "../components/scoreMeta";
+import DataStamp from "../components/DataStamp";
+import { ASSOCIATED_COUNTRIES, EU_MEMBER_STATES, WIDENING_COUNTRIES, countryName, isWidening } from "../horizon";
 import { track } from "../analytics";
 import Icon from "../components/Icon";
 
-const COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"];
+// Country filter: two Horizon groupings first, then every Member State and
+// associated country by name. Groups are sent as ?countries=… to the API.
+const COUNTRY_GROUPS = {
+  eu: { label: "EU Member States", codes: EU_MEMBER_STATES },
+  widening: { label: "Widening countries", codes: WIDENING_COUNTRIES },
+};
+const COUNTRIES = [...EU_MEMBER_STATES, ...ASSOCIATED_COUNTRIES]
+  .map((c) => ({ code: c, name: countryName(c) }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+// Re-weighting: each breakdown value is points out of SCORE_MAX[k], so value/max is
+// the 0–1 signal. A custom score is the weighted mean of those signals × 100.
+function reweighted(inst, weights) {
+  const bd = inst.score_breakdown || {};
+  let sum = 0, wsum = 0;
+  for (const k of Object.keys(SCORE_MAX)) {
+    const w = weights[k] || 0;
+    sum += ((bd[k] || 0) / SCORE_MAX[k]) * w;
+    wsum += w;
+  }
+  return wsum ? (sum / wsum) * 100 : 0;
+}
+
+function WeightsPanel({ weights, onChange, onReset }) {
+  return (
+    <fieldset className="weights card">
+      <legend className="eyebrow">Your weights</legend>
+      <p className="muted weights-note">Drag to change what matters for this call. The list re-ranks on the spot; nothing is saved.</p>
+      <div className="weights-grid">
+        {Object.keys(SCORE_MAX).map((k) => (
+          <label key={k} className="weight">
+            <span className="weight-label">{SCORE_LABELS[k]}</span>
+            <input type="range" min={0} max={40} step={5} value={weights[k]}
+              onChange={(e) => onChange({ ...weights, [k]: Number(e.target.value) })}
+              aria-valuetext={`${weights[k]} points`} />
+            <span className="weight-value">{weights[k]}</span>
+          </label>
+        ))}
+      </div>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onReset}>Reset to default</button>
+    </fieldset>
+  );
+}
 const TYPES = [
   { value: "education",   label: "Education" },
   { value: "company",     label: "Company" },
@@ -123,6 +167,8 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
   const [minScore, setMinScore] = useState(0);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [weights, setWeights] = useState(null); // null = server score
+  const [showWeights, setShowWeights] = useState(false);
   const [hovered, setHovered] = useState(null);
   const [hoverAnchor, setHoverAnchor] = useState(null);
   const hoverTimer = useRef(null);
@@ -132,7 +178,8 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
     setLoading(true);
     setError(false);
     const params = { topic: topicId, limit: 100 };
-    if (country) params.country = country;
+    if (COUNTRY_GROUPS[country]) params.countries = COUNTRY_GROUPS[country].codes.join(",");
+    else if (country) params.country = country;
     if (type) params.type = type;
     if (minScore > 0) params.min_score = minScore;
     let cancelled = false;
@@ -165,6 +212,12 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
   }
 
   const consortiumIds = new Set(consortium.map(i => i.id));
+  const isDefault = weights != null && Object.keys(SCORE_MAX).every((k) => weights[k] === SCORE_MAX[k]);
+  const custom = weights != null && !isDefault;
+  const rows = custom
+    ? list.map((i) => ({ ...i, partner_fit_score: reweighted(i, weights) }))
+        .sort((a, b) => b.partner_fit_score - a.partner_fit_score)
+    : list;
 
   return (
     <div>
@@ -207,7 +260,12 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
       <div className="filter-bar">
         <select className="filter-select" aria-label="Filter by country" value={country} onChange={(e) => setCountry(e.target.value)}>
           <option value="">All countries</option>
-          {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
+          <optgroup label="Groups">
+            {Object.entries(COUNTRY_GROUPS).map(([k, g]) => <option key={k} value={k}>{g.label}</option>)}
+          </optgroup>
+          <optgroup label="Member States and associated countries">
+            {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </optgroup>
         </select>
         <select className="filter-select" aria-label="Filter by type" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">All types</option>
@@ -220,25 +278,43 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           <option value={70}>Score 70+</option>
           <option value={80}>Score 80+</option>
         </select>
+        <button type="button" className={`btn btn-sm ${custom ? "btn-primary" : "btn-secondary"}`}
+          aria-expanded={showWeights} onClick={() => {
+            if (!showWeights) track("weights_opened", { topic: topicId });
+            setShowWeights((v) => !v);
+            if (weights == null) setWeights({ ...SCORE_MAX });
+          }}>
+          <Icon name="filter" size={14} /> Weights{custom ? " · custom" : ""}
+        </button>
         <span className="muted" role="status" aria-live="polite">
           {!loading && `${list.length} ${list.length === 1 ? "institution" : "institutions"}`}
+          {!loading && custom && " · re-ranked with your weights"}
         </span>
         {!loading && list.length > 0 && (
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => {
-              const rows = list.slice(0, 50).map((inst, i) =>
+              const csvRows = rows.slice(0, 50).map((inst, i) =>
                 [i + 1, inst.name, inst.country || "", inst.type || "",
                  inst.partner_fit_score.toFixed(0), inst.eu_projects, inst.recent_works]
               );
-              track("csv_exported", { topic: topicId, rows: rows.length });
-              downloadCsv("partners.csv", ["Rank", "Name", "Country", "Type", "Score", "EU Projects", "Works"], rows);
+              track("csv_exported", { topic: topicId, rows: csvRows.length, custom_weights: custom });
+              downloadCsv("partners.csv", ["Rank", "Name", "Country", "Type", "Score", "EU Projects", "Works"], csvRows);
             }}
           >
             Export CSV
           </button>
         )}
+        <DataStamp topicId={topicId} />
       </div>
+
+      {showWeights && weights && (
+        <WeightsPanel
+          weights={weights}
+          onChange={(w) => { setWeights(w); }}
+          onReset={() => { setWeights(null); setShowWeights(false); track("weights_reset", { topic: topicId }); }}
+        />
+      )}
 
       {loading && (
         <div role="status" aria-live="polite">
@@ -276,7 +352,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
         )
       )}
 
-      {!loading && !error && list.map((inst, i) => {
+      {!loading && !error && rows.map((inst, i) => {
         const inConsortium = consortiumIds.has(inst.id);
         return (
           <div
@@ -294,7 +370,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
               <button type="button" className="inst-name inst-name-btn" onClick={(e) => { e.stopPropagation(); onOpenProfile(inst.id); }}>{inst.name}</button>
               <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: "var(--sp-1)" }}>
                 <TypeBadge type={inst.type} />
-                <span>{inst.country}</span>
+                <span title={countryName(inst.country)}>{inst.country}{isWidening(inst.country) && <><span className="widening-dot" title="Widening country" aria-hidden="true" /><span className="sr-only"> (widening country)</span></>}</span>
                 <span>·</span>
                 <span>{fmt(inst.recent_works)} works</span>
                 {inst.eu_projects > 0 && <><span>·</span><span>{inst.eu_projects} EU projects</span></>}

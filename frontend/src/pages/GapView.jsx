@@ -1,74 +1,155 @@
 import { useEffect, useState } from "react";
-import { getInstitutions } from "../api";
+import { getBenchmark, getInstitutions } from "../api";
 import EmptyState from "../components/EmptyState";
 import Icon from "../components/Icon";
+import TypeBadge from "../components/TypeBadge";
+import { ASSOCIATED_LIST_URL, checkEligibility, countryName, isWidening } from "../horizon";
+import { track } from "../analytics";
 
+// Roles are inferred from each organisation's ROR type — what kind of organisation
+// it is, not what it would do in a project. The UI says so; the mapping is the
+// whole rule, so there's nothing hidden behind the verdicts.
 const ROLES = [
-  { key: "research",   label: "Research lead",        types: ["education", "university"] },
-  { key: "technical",  label: "Technical partner",     types: ["company", "facility"] },
-  { key: "policy",     label: "Policy / public body",  types: ["government", "public_body"] },
-  { key: "ngo",        label: "NGO / civil society",   types: ["ngo", "nonprofit"] },
-  { key: "evaluation", label: "Impact evaluation",     types: ["education", "university", "company"] },
-  { key: "geographic", label: "Geographic diversity",  types: [] },
+  { key: "academic",  label: "Academic research",       types: ["education"] },
+  { key: "facility",  label: "Research infrastructure", types: ["facility", "archive"] },
+  { key: "industry",  label: "Industry",                types: ["company"] },
+  { key: "public",    label: "Public authority",        types: ["government"] },
+  { key: "civil",     label: "Civil society",           types: ["nonprofit"] },
+  { key: "health",    label: "Health & care",           types: ["healthcare"] },
 ];
 
-function strengthLevel(count) {
-  if (count >= 20) return "strong";
-  if (count >= 5)  return "medium";
-  return "weak";
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+function poolDepth(count) {
+  if (count >= 20) return { level: "strong", label: "Deep pool", glyph: "check" };
+  if (count >= 5) return { level: "medium", label: "Some", glyph: "alert" };
+  return { level: "weak", label: "Scarce", glyph: "close" };
 }
 
-function GapGrid({ institutions, isConsortium = false }) {
+function countByRole(institutions) {
   const byType = {};
   for (const inst of institutions) {
-    const t = inst.type || "unknown";
+    const t = (inst.type || "unknown").toLowerCase();
     byType[t] = (byType[t] || 0) + 1;
   }
-  const countries = [...new Set(institutions.map((i) => i.country).filter(Boolean))].sort();
+  return ROLES.map((r) => ({ ...r, count: r.types.reduce((s, t) => s + (byType[t] || 0), 0) }));
+}
+
+function RoleGrid({ institutions, isConsortium }) {
+  return (
+    <div className="gap-grid">
+      {countByRole(institutions).map((role) => {
+        const v = isConsortium
+          ? (role.count > 0
+              ? { level: "strong", label: "Covered", glyph: "check" }
+              : { level: "weak", label: "Missing", glyph: "close" })
+          : poolDepth(role.count);
+        return (
+          <div className="gap-card" key={role.key}>
+            <div className="gap-card-title">{role.label}</div>
+            <div className={`gap-card-status gap-${v.level}`}>{v.label} <Icon name={v.glyph} size={16} /></div>
+            <div className="muted gap-card-count">
+              {plural(role.count, "institution", "institutions")}
+              {isConsortium ? " in your consortium" : " in this network"}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EligibilityCard({ consortium }) {
+  const { ok, checks, outside } = checkEligibility(consortium);
+  return (
+    <section className="card gap-panel" aria-labelledby="elig-h">
+      <div className="gap-panel-head">
+        <h3 id="elig-h" className="eyebrow">Horizon eligibility check</h3>
+        <span className={`gap-verdict ${ok ? "gap-strong" : "gap-weak"}`}>
+          {ok ? "Meets the minimum" : "Not yet"} <Icon name={ok ? "check" : "alert"} size={16} />
+        </span>
+      </div>
+      <ul className="check-list">
+        {checks.map((c) => (
+          <li key={c.key} className={c.ok ? "is-ok" : "is-missing"}>
+            <Icon name={c.ok ? "check" : "close"} size={16} />
+            <span className="sr-only">{c.ok ? "Met:" : "Not met:"}</span>
+            <span>{c.label}</span>
+            <span className="muted check-detail">{c.detail}</span>
+          </li>
+        ))}
+      </ul>
+      {outside.length > 0 && (
+        <p className="muted gap-note">
+          {outside.map(countryName).join(", ")} {outside.length === 1 ? "is" : "are"} outside the EU and
+          associated countries. These partners can join but usually don’t count towards the minimum or receive funding.
+        </p>
+      )}
+      <p className="muted gap-note">
+        Indicative check for Research &amp; Innovation and Innovation Actions. It can’t verify that partners are
+        independent of each other, and some calls set stricter rules. <a href={ASSOCIATED_LIST_URL} target="_blank" rel="noreferrer">Current list of associated countries <Icon name="external" size={12} /></a>
+      </p>
+    </section>
+  );
+}
+
+function BenchmarkCard({ topicId, countries, isConsortium }) {
+  const [bm, setBm] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    getBenchmark(topicId).then((d) => { if (!cancelled) setBm(d); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [topicId]);
+
+  const widening = countries.filter(isWidening);
+  const hasBenchmark = bm && bm.projects > 0 && bm.median_countries != null;
+  const mine = countries.length;
+  const scaleMax = Math.max(mine, hasBenchmark ? bm.p75_countries : 0, 1);
+  const pct = (v) => `${Math.min(100, (v / scaleMax) * 100)}%`;
 
   return (
-    <>
-      <div className="gap-grid">
-        {ROLES.map((role) => {
-          const count = role.key === "geographic"
-            ? countries.length
-            : role.types.reduce((s, t) => s + (byType[t] || 0), 0);
-
-          let level;
-          if (isConsortium) {
-            // For a hand-picked consortium, thresholds are per-org, not per-network
-            level = role.key === "geographic"
-              ? (count >= 4 ? "strong" : count >= 2 ? "medium" : "weak")
-              : (count >= 2 ? "strong" : count >= 1 ? "medium" : "weak");
-          } else {
-            level = role.key === "geographic"
-              ? (count >= 10 ? "strong" : count >= 5 ? "medium" : "weak")
-              : strengthLevel(count);
-          }
-
-          const label = level === "strong" ? "Covered" : level === "medium" ? "Partial" : "Gap";
-          const glyph = level === "strong" ? "check" : level === "medium" ? "alert" : "close";
-          return (
-            <div className="gap-card" key={role.key}>
-              <div className="gap-card-title">{role.label}</div>
-              <div className={`gap-card-status gap-${level}`}>{label} <Icon name={glyph} size={16} /></div>
-              <div className="muted" style={{ fontSize: "var(--text-xs)", marginTop: "var(--sp-1)" }}>
-                {count} {role.key === "geographic" ? (count === 1 ? "country" : "countries") : (count === 1 ? "institution" : "institutions")}
-              </div>
+    <section className="card gap-panel" aria-labelledby="bench-h">
+      <h3 id="bench-h" className="eyebrow">Countries{hasBenchmark ? " vs funded consortia" : ""}</h3>
+      {hasBenchmark && (
+        <>
+          <p className="gap-bench-lead">
+            <span className="gap-bench-num">{Math.round(bm.median_countries)}</span>
+            countries is the median across {plural(bm.projects, "funded EU project", "funded EU projects")} that
+            institutions in this network took part in. The middle half span {Math.round(bm.p25_countries)}–{Math.round(bm.p75_countries)}.
+          </p>
+          {isConsortium && (
+            <div className="bench-bars" aria-hidden="true">
+              <div className="bench-row"><span>Typical</span><div className="bench-track"><div className="bench-range" style={{ left: pct(bm.p25_countries), width: `calc(${pct(bm.p75_countries)} - ${pct(bm.p25_countries)})` }} /><div className="bench-mark" style={{ left: pct(bm.median_countries) }} /></div></div>
+              <div className="bench-row"><span>Yours</span><div className="bench-track"><div className="bench-fill" style={{ width: pct(mine) }} /></div><b>{mine}</b></div>
             </div>
-          );
-        })}
+          )}
+          {Object.keys(bm.coordinator_types).length > 0 && (
+            <p className="muted gap-note gap-coord">
+              Usually coordinated by{" "}
+              {Object.entries(bm.coordinator_types).slice(0, 3).map(([t, share]) => (
+                <span key={t} className="gap-coord-item"><TypeBadge type={t} /> {Math.round(share * 100)}%</span>
+              ))}
+            </p>
+          )}
+        </>
+      )}
+      <div className="gap-countries">
+        {countries.length
+          ? countries.map((c) => (
+              <span className={`tag${isWidening(c) ? " tag-widening" : ""}`} key={c} title={countryName(c)}>
+                {c}{isWidening(c) && <span className="sr-only"> (widening country)</span>}
+              </span>
+            ))
+          : <span className="muted">No countries yet</span>}
       </div>
-
-      <div className="card" style={{ marginTop: "var(--sp-5)" }}>
-        <p className="eyebrow" style={{ marginBottom: "var(--sp-3)" }}>Country coverage</p>
-        <div>
-          {countries.length
-            ? countries.map((c) => <span className="tag" key={c}>{c}</span>)
-            : <span className="muted" style={{ fontSize: "var(--text-xs)" }}>No countries selected</span>}
-        </div>
-      </div>
-    </>
+      {widening.length > 0 && (
+        <p className="muted gap-note">
+          <span className="tag tag-widening" aria-hidden="true">{widening[0]}</span> Highlighted:{" "}
+          {plural(widening.length, "widening country", "widening countries")}. Evaluators often welcome them, and they
+          open up the Widening calls.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -77,7 +158,8 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [mode, setMode] = useState("network");
+  const [mode, setMode] = useState(consortium.length ? "consortium" : "network");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!topicId) return;
@@ -91,11 +173,23 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
     return () => { cancelled = true; };
   }, [topicId, reloadKey]);
 
-  // Auto-switch to consortium view when user starts adding orgs
+  // Follow the consortium: switch to it when the first partner is added, back when it empties.
   useEffect(() => {
-    if (consortium.length > 0) setMode("consortium");
-    if (consortium.length === 0) setMode("network");
-  }, [consortium.length]);
+    setMode(consortium.length > 0 ? "consortium" : "network");
+  }, [consortium.length > 0]);
+
+  async function copyShareLink() {
+    const ids = consortium.map((i) => i.id).join(",");
+    const url = `${window.location.origin}/app#/gaps/${topicId}?c=${ids}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+      track("consortium_shared", { topic: topicId, size: consortium.length });
+    } catch {
+      window.prompt("Copy this link", url);
+    }
+  }
 
   if (loading) return (
     <div role="status" aria-live="polite">
@@ -122,36 +216,53 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
     />
   );
 
-  const activeInstitutions = mode === "consortium" ? consortium : institutions;
-  const label = mode === "consortium"
-    ? `${consortium.length} selected · go to Partner Shortlist to add/remove`
-    : `${institutions.length} institutions in network`;
+  const isConsortium = mode === "consortium";
+  const active = isConsortium ? consortium : institutions;
+  const countries = [...new Set(active.map((i) => (i.country || "").toUpperCase()).filter(Boolean))].sort();
+  const label = isConsortium
+    ? `${plural(consortium.length, "partner", "partners")} selected`
+    : `${plural(institutions.length, "top-scored institution", "top-scored institutions")} in this network`;
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", marginBottom: "var(--sp-4)", flexWrap: "wrap" }}>
+      <div className="gap-toolbar">
         <div className="segmented">
           {["network", "consortium"].map(m => (
             <button key={m} className="segmented-btn" onClick={() => setMode(m)} aria-pressed={mode === m}>
-              {m === "network" ? "Full network" : `My Consortium${consortium.length ? ` (${consortium.length})` : ""}`}
+              {m === "network" ? "Full network" : `My consortium${consortium.length ? ` (${consortium.length})` : ""}`}
             </button>
           ))}
         </div>
         <p className="muted" style={{ margin: 0 }} role="status" aria-live="polite">{label}</p>
-        {mode === "consortium" && consortium.length > 0 && onClearConsortium && (
-          <button className="btn btn-ghost btn-sm" onClick={onClearConsortium}>Clear</button>
+        {isConsortium && consortium.length > 0 && (
+          <div className="gap-toolbar-actions">
+            <button className="btn btn-secondary btn-sm" onClick={copyShareLink}>
+              <Icon name={copied ? "check" : "copy"} size={14} /> {copied ? "Link copied" : "Copy share link"}
+            </button>
+            {onClearConsortium && <button className="btn btn-ghost btn-sm" onClick={onClearConsortium}>Clear</button>}
+          </div>
         )}
       </div>
 
-      {mode === "consortium" && consortium.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "var(--sp-8)" }}>
-          <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-3)" }}>🏛</div>
-          <div style={{ fontSize: "var(--text-sm)", color: "var(--text-3)" }}>
-            No institutions selected. Use the <strong>+</strong> button in Partner Shortlist to build your consortium.
-          </div>
-        </div>
+      {isConsortium && consortium.length === 0 ? (
+        <EmptyState
+          icon="plus"
+          role="status"
+          title="Your consortium is empty"
+          body="Add partners with the + button on the Partner Shortlist. This view then checks roles, Horizon eligibility and country spread."
+        />
       ) : (
-        <GapGrid institutions={activeInstitutions} isConsortium={mode === "consortium"} />
+        <>
+          <RoleGrid institutions={active} isConsortium={isConsortium} />
+          <p className="muted gap-note gap-roles-note">
+            Roles are indicative. They come from each organisation’s ROR type (education, company, government…), not from
+            what it would do in your project.
+          </p>
+          <div className="gap-panels">
+            {isConsortium && <EligibilityCard consortium={consortium} />}
+            <BenchmarkCard topicId={topicId} countries={countries} isConsortium={isConsortium} />
+          </div>
+        </>
       )}
     </div>
   );

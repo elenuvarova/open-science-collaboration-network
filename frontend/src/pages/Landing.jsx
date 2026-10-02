@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getTopics, getInstitutions } from "../api";
+import { getTopics, getInstitutions, getMeta } from "../api";
 import Icon from "../components/Icon";
 import TypeBadge from "../components/TypeBadge";
 import { track } from "../analytics";
@@ -35,13 +35,24 @@ const SOURCES = [
 
 const appLink = (topicId) => (topicId ? `/app#/shortlist/${topicId}` : "/app");
 
+// Prerendered with these, then replaced by live totals from /api/meta.
+const FALLBACK_META = { topics: 6, institutions: 9300, edges: 800000 };
+
+function compact(n) {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1e4) return `${Math.round(n / 1e3)}K`;
+  return n.toLocaleString("en-GB");
+}
+
 export default function Landing() {
   const [topics, setTopics] = useState(FALLBACK_TOPICS);
   const [rows, setRows] = useState(FALLBACK_ROWS);
+  const [meta, setMeta] = useState(FALLBACK_META);
 
   useEffect(() => {
     document.title = "noda — find research partners before you write the grant";
     getTopics().then((t) => { if (t?.length) setTopics(t); }).catch(() => {});
+    getMeta().then((m) => { if (m?.institutions) setMeta(m); }).catch(() => {});
     getInstitutions({ topic: 1, limit: 4 })
       .then((r) => { const list = r?.items ?? r; if (list?.length) setRows(list.slice(0, 4)); })
       .catch(() => {});
@@ -95,7 +106,7 @@ export default function Landing() {
         </section>
 
         <section className="lp-band" aria-label="noda in numbers">
-          {[["6", "research topics"], ["200", "institutions per topic network"], ["100", "ranked partners per shortlist"], ["weekly", "refresh from OpenAlex + CORDIS"]].map(([v, l]) => (
+          {[[String(meta.topics), "research topics"], [compact(meta.institutions), "institutions scored"], [compact(meta.edges), "collaboration links"], ["weekly", "refresh from OpenAlex + CORDIS"]].map(([v, l]) => (
             <div key={l}><p className="lp-band-value">{v}</p><p>{l}</p></div>
           ))}
         </section>
@@ -161,7 +172,7 @@ export default function Landing() {
       </main>
 
       <footer className="lp-footer">
-        <span>noda · a portfolio project</span>
+        <span>noda · a portfolio project · <a href="/app#/method/1">How scores are made</a></span>
         <span>Data: OpenAlex (CC0) · CORDIS (CC BY 4.0) · ROR (CC0)</span>
       </footer>
     </div>

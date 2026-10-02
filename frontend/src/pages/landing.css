@@ -113,3 +113,4 @@
   .lp-band .lp-band-value { font-size: 36px; }
   .lp-row-score { min-width: 44px; font-size: 18px; }
 }
+.lp-footer a { color: var(--text-2); text-decoration: underline; text-underline-offset: 2px; }

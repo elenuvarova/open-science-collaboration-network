@@ -1,9 +1,10 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { getTopics } from "./api";
+import { getInstitution, getTopics } from "./api";
 import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
 import BriefView from "./pages/BriefView";
 import SearchView from "./pages/SearchView";
+import MethodologyView from "./pages/MethodologyView";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
 import { track } from "./analytics";
@@ -31,18 +32,21 @@ function loadConsortia() {
   }
 }
 
-const VALID_PAGES = new Set(PAGES.map(p => p.id));
+// "method" is reachable by link (data stamp, landing footer) but has no nav tab.
+const VALID_PAGES = new Set([...PAGES.map(p => p.id), "method"]);
 
-// Hash format: #/<page>/<topicId>[/<institutionId>] — e.g. #/shortlist/3/445.
+// Hash format: #/<page>/<topicId>[/<institutionId>][?c=<id>,<id>…] — e.g. #/shortlist/3/445.
+// ?c= carries a shared consortium (see "Copy share link" in the Gap view).
 // All parts optional and guarded so a malformed hash never throws. The third
 // segment deep-links an open institution profile (only used on the shortlist).
 function parseHash() {
-  const m = (window.location.hash || "").match(/^#\/([a-z]+)(?:\/(\d+))?(?:\/(\d+))?/i);
+  const m = (window.location.hash || "").match(/^#\/([a-z]+)(?:\/(\d+))?(?:\/(\d+))?(?:\?c=([\d,]+))?/i);
   if (!m) return {};
+  const shared = m[4] ? m[4].split(",").filter(Boolean).map(Number).slice(0, 30) : [];
   const page = VALID_PAGES.has(m[1]) ? m[1] : undefined;
   const topicId = m[2] != null ? Number(m[2]) : undefined;
   const instId = m[3] != null ? Number(m[3]) : undefined;
-  return { page, topicId, instId };
+  return { page, topicId, instId, shared };
 }
 
 export default function App() {
@@ -61,7 +65,7 @@ export default function App() {
   // Per-view heading. On page change we move focus here so keyboard / screen-reader
   // users are taken to the new view and hear its name (WCAG 2.4.3 / 2.4.6).
   const headingRef = useRef(null);
-  const pageLabel = PAGES.find(p => p.id === page)?.label || "";
+  const pageLabel = page === "method" ? "Methodology" : (PAGES.find(p => p.id === page)?.label || "");
   useEffect(() => { headingRef.current?.focus(); }, [page]);
 
   // Consortium is scoped per topic (an org's Partner Fit Score only means
@@ -85,6 +89,24 @@ export default function App() {
       return { ...prev, [topicId]: next };
     });
   }
+
+  // A shared link (#/gaps/3?c=12,45) replaces this topic's consortium with the
+  // shared one. Read once on load; the hash sync below then drops ?c from the URL.
+  const [sharedNotice, setSharedNotice] = useState(null);
+  const sharedRef = useRef(parseHash().shared || []);
+  useEffect(() => {
+    const ids = sharedRef.current;
+    if (topicId == null || !ids.length) return;
+    sharedRef.current = [];
+    Promise.all(ids.map((id) => getInstitution(id, topicId).catch(() => null)))
+      .then((rows) => {
+        const found = rows.filter(Boolean);
+        if (!found.length) return;
+        setConsortiumByTopic((prev) => ({ ...prev, [topicId]: found }));
+        setSharedNotice(`Loaded a shared consortium of ${found.length} ${found.length === 1 ? "partner" : "partners"}.`);
+        track("consortium_opened_shared", { topic: topicId, size: found.length });
+      });
+  }, [topicId]);
 
   function clearConsortium() {
     if (topicId == null) return;
@@ -111,6 +133,17 @@ export default function App() {
   }
 
   useEffect(() => { loadTopics(); }, []);
+
+  // In-app links (the data stamp's "How scores are made", a pasted URL) change the
+  // hash directly; follow them. replaceState below never fires hashchange.
+  useEffect(() => {
+    const onHash = () => {
+      const h = parseHash();
+      if (h.page) setPage(h.page);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   // Keep the URL hash in sync with page + topic (+ open profile on the shortlist)
   // so refresh restores the view and it's shareable. replaceState avoids polluting
@@ -189,6 +222,12 @@ export default function App() {
 
       <main key={page} className={`fade-in ${isWide ? "page-wide" : "page"}`}>
         <h2 className="sr-only" tabIndex={-1} ref={headingRef}>{pageLabel}</h2>
+        {sharedNotice && (
+          <div className="notice" role="status">
+            <Icon name="check" size={16} /> <span>{sharedNotice}</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => setSharedNotice(null)}>Dismiss</button>
+          </div>
+        )}
         {!topicId && !topicsError && <div className="spinner" role="status" aria-live="polite">Loading topics…</div>}
         {!topicId && topicsError && (
           <div className="card" role="alert" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
@@ -211,6 +250,7 @@ export default function App() {
         {topicId && page === "gaps"      && <GapView topicId={topicId} consortium={consortium} onClearConsortium={clearConsortium} />}
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
+        {topicId && page === "method"    && <MethodologyView />}
       </main>
     </div>
   );
