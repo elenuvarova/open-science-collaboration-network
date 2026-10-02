@@ -96,10 +96,10 @@
 }
 
 @media (max-width: 960px) {
-  .lp-hero, .lp-preview { grid-template-columns: 1fr; }
+  .lp-hero, .lp-preview { grid-template-columns: minmax(0, 1fr); }
   .lp-constellation { justify-self: center; max-width: 420px; }
   .lp-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lp-steps, .lp-sources ul { grid-template-columns: 1fr; }
+  .lp-steps, .lp-sources ul { grid-template-columns: minmax(0, 1fr); }
   .lp-section { padding: 72px var(--sp-4); }
   .lp-preview { padding-top: 0; }
 }
