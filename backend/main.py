@@ -56,6 +56,12 @@ if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") 
                 candidate = os.path.join(public_dir, full_path)
                 if os.path.isfile(candidate):
                     return FileResponse(candidate)
+            # The tool lives under /app and gets the plain shell; everything else
+            # gets index.html, which carries the prerendered landing page.
+            if full_path == "app" or full_path.startswith("app/"):
+                app_shell = os.path.join(public_dir, "app.html")
+                if os.path.isfile(app_shell):
+                    return FileResponse(app_shell)
             return FileResponse(os.path.join(public_dir, "index.html"))
 
 print(f"db: {db_kind}")

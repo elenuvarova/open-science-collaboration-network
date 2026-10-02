@@ -173,12 +173,20 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       randomize: true,
       avoidOverlap: true,
       handleDisconnected: true,
-      nodeSpacing: 8,
-      edgeLength: 100,
+      nodeSpacing: 14,
+      edgeLength: 150,
     });
     sim.run();
-    const fitT = setTimeout(() => cyRef.current?.fit(undefined, 30), 700);
-    return () => { clearTimeout(fitT); sim.stop(); };
+    // The live simulation keeps spreading nodes for a few seconds, so one early
+    // fit leaves the graph drifting off-canvas. Re-fit while it settles — but
+    // stop as soon as the user pans, zooms or drags, so we never fight them.
+    let userMoved = false;
+    const markMoved = () => { userMoved = true; };
+    cy.on("tapstart scrollzoom", markMoved);
+    const fits = [700, 1600, 3000, 5000].map((ms) =>
+      setTimeout(() => { if (!userMoved) cyRef.current?.fit(undefined, 30); }, ms)
+    );
+    return () => { fits.forEach(clearTimeout); cy.off("tapstart scrollzoom", markMoved); sim.stop(); };
   }, [ready, nodes, edges]);
 
   // Interaction: tap to select, hover to highlight neighbours. Registered once

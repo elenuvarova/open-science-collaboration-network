@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
+import { hydrateRoot } from "react-dom/client";
 import "./styles.css";
 
 // "/" is the landing page; the tool lives under "/app" (hash routes inside).
@@ -14,8 +15,14 @@ const App = lazy(() => import("./App.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const isApp = pathname.startsWith("/app");
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <Suspense fallback={null}>{isApp ? <App /> : <Landing />}</Suspense>
-  </React.StrictMode>
-);
+const rootEl = document.getElementById("root");
+if (!isApp && rootEl.hasChildNodes()) {
+  // Landing was prerendered at build time — hydrate it in place, no blank flash.
+  import("./pages/Landing.jsx").then(({ default: L }) => hydrateRoot(rootEl, <L />));
+} else {
+  ReactDOM.createRoot(rootEl).render(
+    <React.StrictMode>
+      <Suspense fallback={null}>{isApp ? <App /> : <Landing />}</Suspense>
+    </React.StrictMode>
+  );
+}

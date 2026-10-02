@@ -1,4 +1,6 @@
-# Open Science Collaboration Network
+# noda
+
+**Live:** https://noda.science · landing at `/`, the tool at `/app`. (Formerly "Open Science Collaboration Network".)
 
 A Python-powered intelligence platform that maps research-collaboration networks from open data (OpenAlex + CORDIS), scores potential partners, and reveals consortium gaps — so a team can **find the right research partners before writing the grant**. React frontend, FastAPI backend, a Python ETL pipeline, and PostgreSQL. Runs locally with zero setup (SQLite built in) and **deploys as a single Docker container** on Coolify — uvicorn serves the SPA + API, the ETL runs as an in-process weekly scheduler against the container's own PostgreSQL.
 
@@ -6,7 +8,8 @@ See **[PLAN.md](PLAN.md)** for the full architecture, data model, ETL design, ro
 
 ## Stack
 
-- **Frontend:** React 18 + Vite 5 (JavaScript), Cytoscape.js for the network graph
+- **Frontend:** React 18 + Vite 5 (JavaScript), Cytoscape.js for the network graph; landing page prerendered at build time (`src/entry-server.jsx` + `scripts/prerender.mjs`), light theme only, Outfit + Roboto Serif, Streamline Core Line icons
+- **Analytics:** self-hosted Umami (cookieless) — custom events in `frontend/src/analytics.js`
 - **Backend:** Python + FastAPI + SQLAlchemy — **SQLite locally, PostgreSQL in production** (picked automatically from `DATABASE_URL`)
 - **ETL:** Python (pyalex, pandas, networkx, rapidfuzz) — runs as an **in-process weekly scheduler** inside the app, writes precomputed results to Postgres
 - **Data:** OpenAlex (CC0) + CORDIS (CC BY 4.0) + ROR — all free, no paid API tier
