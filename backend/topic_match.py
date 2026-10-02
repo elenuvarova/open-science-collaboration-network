@@ -10,7 +10,9 @@ import importlib.util
 import os
 from functools import lru_cache
 
-from sqlalchemy import false, or_
+from itertools import combinations
+
+from sqlalchemy import and_, false, or_
 
 from models import Project, Topic
 
@@ -29,11 +31,15 @@ def _stems_by_topic() -> dict[str, list[str]]:
 
 
 def topic_project_clause(db, topic_id: int):
-    """SQL condition selecting projects whose title or abstract matches the topic."""
+    """SQL condition: a topic stem in the title, or two different stems in the abstract."""
     topic = db.get(Topic, topic_id)
     if topic is None:
         return false()
     stems = _stems_by_topic().get(topic.name) or topic.keywords or [topic.name]
-    terms = [s.lower() for s in stems if s]
+    terms = sorted({s.lower() for s in stems if s})
+    # A stem in the title is a strong signal. In the abstract one stem alone is
+    # noise ("a flood of content" pulled a VR-for-film project into Climate
+    # adaptation), so the abstract must contain at least two different stems.
     return or_(*[Project.title.ilike(f"%{t}%") for t in terms],
-               *[Project.abstract.ilike(f"%{t}%") for t in terms])
+               *[and_(Project.abstract.ilike(f"%{a}%"), Project.abstract.ilike(f"%{b}%"))
+                 for a, b in combinations(terms, 2)])

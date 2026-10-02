@@ -1,5 +1,5 @@
 """GET /api/calls with the EU Funding & Tenders API mocked out (no network, no model)."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +13,9 @@ client = TestClient(app)
 
 
 def _iso(days: int) -> str:
-    return (date.today() + timedelta(days=days)).isoformat() + "T00:00:00.000+0000"
+    # The app counts days in UTC; using the local date here broke the test
+    # whenever local and UTC dates differed (around midnight).
+    return (datetime.now(timezone.utc).date() + timedelta(days=days)).isoformat() + "T00:00:00.000+0000"
 
 
 def _hit(identifier, title, description, deadlines, status="31094502", action="HORIZON  Research and Innovation Actions"):

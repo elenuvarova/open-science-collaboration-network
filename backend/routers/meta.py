@@ -44,12 +44,12 @@ def _cached(key, build):
 @router.get("/meta", response_model=MetaOut)
 def get_meta(db: Session = Depends(get_db)):
     def build():
-        # Last successful ETL run; before the run log existed, fall back to the
-        # newest brief, which the same ETL run writes.
-        # Only full runs count — a briefs-only refresh doesn't make the scores newer.
+        # Last successful FULL ETL run. No fallback: the brief date moved when only
+        # the briefs were regenerated, which would overstate how fresh the scores
+        # are. Until the first logged run the UI says "refreshed weekly" instead.
         as_of = (db.query(func.max(EtlRun.finished_at))
-                 .filter(EtlRun.ok.is_(True), EtlRun.reason.in_(["weekly", "initial-populate"])).scalar()
-                 or db.query(func.max(TopicBrief.generated_at)).scalar())
+                 .filter(EtlRun.ok.is_(True), EtlRun.reason.in_(["weekly", "initial-populate"]))
+                 .scalar())
         return MetaOut(
             data_as_of=as_of,
             topics=db.query(func.count(distinct(InstitutionMetric.topic_id))).scalar() or 0,
