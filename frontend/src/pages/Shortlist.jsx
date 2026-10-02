@@ -7,6 +7,7 @@ import SkeletonList from "../components/SkeletonList";
 import EmptyState from "../components/EmptyState";
 import { SCORE_MAX } from "../components/scoreMeta";
 import { track } from "../analytics";
+import Icon from "../components/Icon";
 
 const COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"];
 const TYPES = [
@@ -248,7 +249,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
 
       {!loading && error && (
         <EmptyState
-          icon="⚠️"
+          icon="alert"
           role="alert"
           title="Couldn’t load partners"
           body="The server didn’t respond — it may be waking up. Give it a moment and try again."
@@ -259,7 +260,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
       {!loading && !error && list.length === 0 && (
         hasFilters ? (
           <EmptyState
-            icon="🔭"
+            icon="search"
             role="status"
             title="No partners match these filters"
             body="Try widening the country, type, or minimum-score filter to see more institutions."
@@ -267,7 +268,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           />
         ) : (
           <EmptyState
-            icon="🔭"
+            icon="search"
             role="status"
             title="No partners yet for this topic"
             body="Collaboration data for this topic isn’t available yet. Check back shortly."
@@ -314,7 +315,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                 aria-label={inConsortium ? "Remove from consortium" : "Add to consortium"}
                 onClick={(e) => { e.stopPropagation(); onToggleConsortium(inst); }}
               >
-                {inConsortium ? "✓" : "+"}
+                <Icon name={inConsortium ? "check" : "plus"} size={14} />
               </button>
             )}
           </div>

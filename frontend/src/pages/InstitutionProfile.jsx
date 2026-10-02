@@ -4,6 +4,7 @@ import ScoreCard from "../components/ScoreCard";
 import ScoreRing from "../components/ScoreRing";
 import TypeBadge from "../components/TypeBadge";
 import { SCORE_MAX, SCORE_LABELS, SCORE_DESCRIPTIONS } from "../components/scoreMeta";
+import Icon from "../components/Icon";
 
 export default function InstitutionProfile({ id, topicId, onBack }) {
   const [inst, setInst] = useState(null);
@@ -18,7 +19,7 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
 
   if (loading) return (
     <div>
-      {onBack && <button className="back-btn" onClick={onBack}>← Back</button>}
+      {onBack && <button className="back-btn" onClick={onBack}><Icon name="arrow-left" size={14} /> Back</button>}
       <div className="card">
         <div className="skel" style={{ height: 22, width: "55%", borderRadius: "var(--r-sm)", marginBottom: "var(--sp-2)" }} />
         <div className="skel" style={{ height: 13, width: "30%", borderRadius: "var(--r-sm)", marginBottom: "var(--sp-5)" }} />
@@ -34,7 +35,7 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
 
   return (
     <div className="fade-in">
-      {onBack && <button className="back-btn" onClick={onBack}>← Back to shortlist</button>}
+      {onBack && <button className="back-btn" onClick={onBack}><Icon name="arrow-left" size={14} /> Back to shortlist</button>}
       <div className="card">
         {/* Header */}
         <div style={{ display: "flex", gap: "var(--sp-4)", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
@@ -53,7 +54,7 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
               {inst.ror_id && (
                 <a href={inst.ror_id} target="_blank" rel="noreferrer"
                    style={{ fontSize: "var(--text-xs)", color: "var(--accent)" }}>
-                  ROR ↗
+                  ROR <Icon name="external" size={10} />
                 </a>
               )}
             </div>

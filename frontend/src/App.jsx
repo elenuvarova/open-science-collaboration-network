@@ -6,7 +6,7 @@ import GapView from "./pages/GapView";
 import BriefView from "./pages/BriefView";
 import SearchView from "./pages/SearchView";
 import Tour from "./components/Tour";
-import ThemeToggle from "./components/ThemeToggle";
+import Icon from "./components/Icon";
 import { track } from "./analytics";
 
 const PAGES = [
@@ -17,17 +17,6 @@ const PAGES = [
   { id: "search",    label: "Search" },
 ];
 
-function useTheme() {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("theme") || "dark"
-  );
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-  const toggle = () => setTheme(t => t === "dark" ? "light" : "dark");
-  return [theme, toggle];
-}
 
 const CONSORTIUM_KEY = "consortium_by_topic";
 
@@ -66,7 +55,6 @@ export default function App() {
     return (h.page ?? "shortlist") === "shortlist" ? (h.instId ?? null) : null;
   });
   const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
-  const [theme, toggleTheme] = useTheme();
 
   // Per-view heading. On page change we move focus here so keyboard / screen-reader
   // users are taken to the new view and hear its name (WCAG 2.4.3 / 2.4.6).
@@ -141,7 +129,7 @@ export default function App() {
       {showTour && <Tour onClose={() => setShowTour(false)} />}
 
       <header className="topbar">
-        <h1 className="topbar-title">Open Science Collaboration Network</h1>
+        <h1 className="topbar-title"><a className="brand" href="/" aria-label="noda — home"><span className="brand-dots" aria-hidden="true"><i /><i /><i /></span><span className="brand-word">noda</span></a></h1>
 
         <nav>
           {PAGES.map((p) => (
@@ -184,17 +172,16 @@ export default function App() {
                 <span style={{
                   position: "absolute", right: "var(--sp-2)", pointerEvents: "none",
                   color: "var(--text-3)", fontSize: "var(--text-sm)", lineHeight: 1,
-                }}>▾</span>
+                }}><Icon name="chevron-down" size={12} /></span>
               </span>
             </label>
           )}
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <button
             className="icon-btn"
             onClick={() => setShowTour(true)}
             title="How it works"
             aria-label="Open tour"
-          >?</button>
+          ><Icon name="help" size={16} /></button>
         </div>
       </header>
 
@@ -203,7 +190,7 @@ export default function App() {
         {!topicId && !topicsError && <div className="spinner" role="status" aria-live="polite">Loading topics…</div>}
         {!topicId && topicsError && (
           <div className="card" role="alert" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
-            <div style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-2)" }} aria-hidden="true">⚠️</div>
+            <div style={{ color: "var(--text-2)", marginBottom: "var(--sp-2)" }}><Icon name="alert" size={36} /></div>
             <div className="subhead" style={{ marginBottom: "var(--sp-2)" }}>
               Couldn’t reach the server
             </div>

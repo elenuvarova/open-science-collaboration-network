@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { track } from "../analytics";
+import Icon from "./Icon";
 
 const STEPS = [
   {
@@ -132,7 +133,7 @@ export default function Tour({ onClose }) {
           onClick={finish}
           aria-label="Close tour"
           style={{ position: "absolute", top: "var(--sp-4)", right: "var(--sp-4)" }}
-        >✕</button>
+        ><Icon name="close" size={14} /></button>
       </div>
     </div>
   );

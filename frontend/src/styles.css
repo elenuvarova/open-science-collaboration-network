@@ -101,85 +101,55 @@
 /* ═══════════════════════════════════════════════════════
    Colour themes
    ═══════════════════════════════════════════════════════ */
-:root,
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg:          #0f1117;
-  --bg-subtle:   #131720;
-  --surface:     #1a1f2e;
-  --surface-2:   #222840;
-  --surface-3:   #2a3150;
-  --border:      #2d3748;
-  --border-sub:  #232a3a;
-  --text-1:      #f1f5f9;
-  --text-2:      #94a3b8;
-  --text-3:      #7e8ba1; /* lightened from #64748b → 4.76:1 on --surface (WCAG AA) */
-  --accent:      #4f8ef7;
-  --accent-h:    #6fa5ff;
-  --accent-sub:  #1e3a6e;
-  /* Solid action fill — darker than --accent so white text clears AA (5.17:1),
-     which --accent alone fails in dark (3.21:1). --accent stays for links /
-     focus-ring / breakdown bars, which sit on the dark page bg. */
-  --accent-strong:   #2563eb;
-  --accent-strong-h: #1d4ed8;
-  --green:       #4ade80;
-  --green-bg:    #14532d;
-  --yellow:      #fbbf24;
-  --yellow-bg:   #451a03;
-  --red:         #f87171;
-  --red-bg:      #3b1212;
-  --code-bg:     #1a1f2e;
-  --on-accent:   #ffffff;
-  --scrim:       rgba(0,0,0,0.7);
-  /* Institution type badges (dark) */
-  --type-education-fg:#60a5fa; --type-education-bg:#142a52; /* darkened from #1e3a6e → 5.57:1 (11px AA) */
-  --type-company-fg:#4ade80;   --type-company-bg:#14532d;
-  --type-ngo-fg:#fbbf24;       --type-ngo-bg:#451a03;
-  --type-public-fg:#c084fc;    --type-public-bg:#2e1065;
-  --type-health-fg:#f472b6;    --type-health-bg:#4a0a2e;
-  --type-facility-fg:#34d399;  --type-facility-bg:#04402f; /* darkened from #065f46 → 6.14:1 (11px AA) */
-  --type-funder-fg:#fb923c;    --type-funder-bg:#431407;
-  --type-other-fg:#94a3b8;     --type-other-bg:#1e293b;
-}
-
-[data-theme="light"] {
+/* noda — one light theme (palette A1, tuned from the "community" ref).
+   Dark theme was removed on purpose (Oct 2026). Every pair below is checked
+   for WCAG AA: body text ≥ 4.5:1 on --bg and --surface, controls ≥ 3:1. */
+:root {
   color-scheme: light;
-  --bg:          #f6f8fc;
-  --bg-subtle:   #eef2f8;
+  --bg:          #e5e4ea;  /* lavender-grey page */
+  --bg-subtle:   #ecebf1;
   --surface:     #ffffff;
-  --surface-2:   #f1f5fb;
-  --surface-3:   #e8eef8;
-  --border:      #dde3ee;
-  --border-sub:  #edf0f7;
-  --text-1:      #0f172a;
-  --text-2:      #475569;
-  --text-3:      #64748b; /* darkened from #94a3b8 → 4.76:1 on white (WCAG AA) */
-  --accent:      #2563eb;
-  --accent-h:    #1d4ed8;
-  --accent-sub:  #dbeafe;
-  --accent-strong:   #2563eb;
-  --accent-strong-h: #1d4ed8;
-  --green:       #15803d; /* darkened from #16a34a → 4.6:1 on --green-bg */
-  --green-bg:    #dcfce7;
-  --yellow:      #b45309;
-  --yellow-bg:   #fef3c7;
-  --red:         #dc2626;
-  --red-bg:      #fee2e2;
-  --code-bg:     #f1f5fb;
+  --surface-2:   #f4f4f7;
+  --surface-3:   #ecebf1;
+  --border:      #cfced9;
+  --border-sub:  #e1e0e8;
+  --text-1:      #12121e;  /* ink */
+  --text-2:      #4e4e5c;  /* 6.5:1 on --bg */
+  --text-3:      #5e5e6c;  /* 5.1:1 on --bg */
+  --accent:      #1257b8;  /* links + focus ring, 5.5:1 on --bg */
+  --accent-h:    #0e4796;
+  --accent-sub:  #dce8fa;
+  --accent-strong:   #12121e;  /* primary buttons are ink pills */
+  --accent-strong-h: #2c2c3a;
+  --green:       #1e4a22;
+  --green-bg:    #dcebdd;
+  --yellow:      #3c6383;  /* "partial" = steel, no amber in this palette */
+  --yellow-bg:   #e1e8ef;
+  --red:         #b3261e;
+  --red-bg:      #f8e1df;
+  --code-bg:     #f4f4f7;
   --on-accent:   #ffffff;
-  --scrim:       rgba(15,23,42,0.5);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,.10);
-  /* Institution type badges (light) */
-  --type-education-fg:#1d4ed8; --type-education-bg:#dbeafe;
-  --type-company-fg:#15803d;   --type-company-bg:#dcfce7;
-  --type-ngo-fg:#b45309;       --type-ngo-bg:#fef3c7;
-  --type-public-fg:#7c3aed;    --type-public-bg:#ede9fe;
-  --type-health-fg:#be185d;    --type-health-bg:#fce7f3;
-  --type-facility-fg:#0f766e;  --type-facility-bg:#ccfbf1;
-  --type-funder-fg:#c2410c;    --type-funder-bg:#fff7ed;
-  --type-other-fg:#566273;     --type-other-bg:#f1f5f9; /* darkened from #64748b → 5.65:1 (11px AA) */
+  --scrim:       rgba(18,18,30,0.5);
+  --pair:        #e0261b;  /* selected pair / path only */
+  --mark:        #ddf80a;  /* lime highlighter */
+  --shadow-sm: 0 1px 3px rgba(18,18,30,.06), 0 1px 2px rgba(18,18,30,.04);
+  --shadow-md: 0 4px 12px rgba(18,18,30,.08);
+  --shadow-lg: 0 12px 32px rgba(18,18,30,.12);
+
+  /* Institution types — background + the text colour that clears AA on it */
+  --type-education-bg:#1b7fe8; --type-education-fg:#12121e;
+  --type-public-bg:#1e4a22;    --type-public-fg:#ffffff;
+  --type-company-bg:#d08cfa;   --type-company-fg:#12121e;
+  --type-ngo-bg:#ddf80a;       --type-ngo-fg:#12121e;
+  --type-health-bg:#afd3b2;    --type-health-fg:#12121e;
+  --type-facility-bg:#a6cdf2;  --type-facility-fg:#12121e;
+  --type-funder-bg:#3c6383;    --type-funder-fg:#ffffff;
+  --type-other-bg:#cbcad7;     --type-other-fg:#12121e;
+
+  /* Type: Outfit for UI, Roboto Serif (narrow cut) for display + numbers */
+  --font-ui: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Roboto Serif", Georgia, serif;
+  --display-axes: "wdth" 75, "opsz" 72;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -192,10 +162,9 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   background: var(--bg);
   color: var(--text-1);
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: var(--text-base); /* 16px base — Level 3 */
   line-height: var(--leading-normal);
-  transition: background var(--transition), color var(--transition);
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "kern" 1, "liga" 1;
 }
@@ -289,7 +258,7 @@ a:hover { color: var(--accent-h); }
 /* Active tab is shown by the pill + accent colour only — NOT a heavier weight,
    which would change the button's width and shift the whole nav strip on every
    tab change (visible "jump", especially in the scrollable mobile nav row). */
-.nav-btn.active { background: var(--accent-sub); color: var(--accent-h); }
+.nav-btn.active { background: var(--text-1); color: var(--on-accent); }
 
 /* Live count of the current topic's consortium on the Gaps tab */
 .nav-badge {
@@ -439,7 +408,7 @@ a:hover { color: var(--accent-h); }
 @media (hover: none) { .btn { min-height: 40px; } }
 
 /* ═══════════════════════════════════════════════════════
-   Type badge — colour flips automatically via [data-theme] tokens
+   Type badge — one colour per institution type (A1)
    ═══════════════════════════════════════════════════════ */
 .type-badge {
   display: inline-flex;
@@ -571,9 +540,10 @@ a:hover { color: var(--accent-h); }
   flex-shrink: 0;
   letter-spacing: 0.01em;
 }
-.score-high { background: var(--green-bg);  color: var(--green);  }
-.score-mid  { background: var(--yellow-bg); color: var(--yellow); }
-.score-low  { background: var(--surface-2); color: var(--text-2); }
+.score-pill { font-family: var(--font-display); font-variation-settings: var(--display-axes); font-weight: 400; font-size: var(--text-base); min-width: 40px; text-align: center; }
+.score-high { background: var(--text-1); color: var(--on-accent); }
+.score-mid  { background: var(--text-2); color: var(--on-accent); }
+.score-low  { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
 /* ═══════════════════════════════════════════════════════
    Score breakdown
@@ -1069,3 +1039,21 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .gap-card:nth-child(4) { animation-delay: 0.12s; }
 .gap-card:nth-child(5) { animation-delay: 0.15s; }
 .gap-card:nth-child(6) { animation-delay: 0.18s; }
+
+/* ═══════════════════════════════════════════════════════
+   noda display type — narrow Roboto Serif for titles and numbers
+   ═══════════════════════════════════════════════════════ */
+.page-title, .stat-value, .display, .score-ring-value, .inst-name-display {
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.icon { display: inline-block; flex-shrink: 0; vertical-align: middle; }
+.brand { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text-1); }
+.brand-dots { display: inline-flex; }
+.brand-dots i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--text-1); margin-left: -5px; }
+.brand-dots i:first-child { margin-left: 0; background: var(--type-education-bg); }
+.brand-dots i:nth-child(2) { background: var(--type-ngo-bg); }
+.brand-dots i:nth-child(3) { background: var(--type-public-bg); }
+.brand-word { font-family: var(--font-display); font-variation-settings: var(--display-axes); font-size: 22px; letter-spacing: -0.02em; line-height: 1; }

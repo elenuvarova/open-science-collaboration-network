@@ -15,17 +15,17 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
   const containerRef = useRef(null);
   const [ready, setReady] = useState(false);
 
-  // Resolve theme tokens from CSS variables so the graph chrome flips with the
-  // light/dark toggle. App re-renders on toggle, so this recomputes each render.
+  // Resolve design tokens from CSS variables (cytoscape can't read var()).
   const css = getComputedStyle(document.documentElement);
   const v = (name, fallback) => (css.getPropertyValue(name).trim() || fallback);
-  const textColor = v("--text-1", "#f1f5f9");
-  const bgColor = v("--bg", "#0f1117");
-  const borderColor = v("--border", "#2d3748");
+  const textColor = v("--text-1", "#12121e");
+  const bgColor = v("--bg", "#e5e4ea");
+  const borderColor = v("--border", "#cfced9");
   // Project edges tint with the accent so they track the theme; cytoscape can't
   // read CSS var(), so resolve --accent and append an alpha byte (88 ≈ 53%).
-  const accentColor = v("--accent", "#4f8ef7");
+  const accentColor = v("--accent", "#1257b8");
   const projectEdgeColor = `${accentColor}88`;
+  const pairColor = v("--pair", "#e0261b");
 
   // Derive unique communities for legend
   const communities = [...new Map(
@@ -77,7 +77,8 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         "text-margin-y": 4,
         "text-max-width": 90,
         "text-wrap": "ellipsis",
-        "border-width": 0,
+        "border-width": 1.5,
+        "border-color": textColor,
         "text-background-color": bgColor,
         "text-background-opacity": 0.85,
         "text-background-padding": "2px",
@@ -126,7 +127,7 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     },
     {
       selector: "edge:selected",
-      style: { opacity: 1, width: 2, "line-color": "var(--accent)" },
+      style: { opacity: 1, width: 3, "line-color": pairColor },
     },
     {
       selector: ".dimmed",

@@ -1,5 +1,4 @@
-// Raw institution type → badge class + label. Colours live in CSS tokens scoped
-// by [data-theme], so the badge flips light/dark automatically (no theme prop).
+// Raw institution type → badge class + label. Colours live in the --type-* tokens.
 const TYPE_MAP = {
   university:  { className: "type-education", label: "Education" },
   education:   { className: "type-education", label: "Education" },

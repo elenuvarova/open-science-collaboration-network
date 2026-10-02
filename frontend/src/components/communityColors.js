@@ -1,8 +1,9 @@
-// Single source of truth for the graph community (cluster) palette.
-// Shared by GraphCanvas (node fill) and GraphLegend (swatches).
+// Single source of truth for the graph community (cluster) palette — noda A1.
+// Shared by GraphCanvas (node fill) and GraphLegend (swatches). Every node also
+// gets a 1.5px ink outline, so the light fills (lime, sage, sky) still clear 3:1.
 export const COMMUNITY_COLORS = [
-  "#4f8ef7", "#4ade80", "#fbbf24", "#f87171", "#a78bfa",
-  "#34d399", "#fb923c", "#e879f9", "#38bdf8", "#facc15",
+  "#1b7fe8", "#1e4a22", "#d08cfa", "#ddf80a", "#afd3b2",
+  "#a6cdf2", "#3c6383", "#cbcad7", "#12121e", "#5e5e6c",
 ];
 
 export const nodeColor = (communityId) =>

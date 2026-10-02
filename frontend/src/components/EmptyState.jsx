@@ -1,4 +1,6 @@
-export default function EmptyState({ icon = "🔍", title, body, action, role }) {
+import Icon from "./Icon";
+
+export default function EmptyState({ icon = "search", title, body, action, role }) {
   return (
     <div
       role={role}
@@ -9,7 +11,7 @@ export default function EmptyState({ icon = "🔍", title, body, action, role })
         textAlign: "center", gap: "var(--sp-3)",
       }}
     >
-      <div style={{ fontSize: "var(--text-3xl)", lineHeight: 1 }} aria-hidden="true">{icon}</div>
+      <div style={{ color: "var(--text-2)", lineHeight: 1 }}><Icon name={icon} size={36} /></div>
       <p className="subhead">{title}</p>
       {body && (
         <p className="body-text" style={{ maxWidth: 320, color: "var(--text-3)" }}>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { COMMUNITY_COLORS } from "./communityColors";
+import Icon from "./Icon";
 
 export default function GraphLegend({ communities = [] }) {
   // Collapsed by default on small screens where the legend would otherwise cover
@@ -30,14 +31,14 @@ export default function GraphLegend({ communities = [] }) {
           fontSize: "var(--text-xs)", color: "var(--text-3)", fontWeight: "var(--w-semibold)",
         }}
       >
-        Clusters <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+        Clusters <Icon name={open ? "chevron-down" : "chevron-right"} size={10} />
       </button>
 
       {open && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)", maxHeight: 180, overflow: "auto", marginTop: 2 }}>
           {items.map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.color || COMMUNITY_COLORS[i % COMMUNITY_COLORS.length], flexShrink: 0 }} />
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.color || COMMUNITY_COLORS[i % COMMUNITY_COLORS.length], border: "1px solid var(--text-1)", flexShrink: 0 }} />
               <span style={{ fontSize: "var(--text-xs)", color: "var(--text-2)" }}>
                 {item.label || `Cluster ${i + 1}`}
               </span>

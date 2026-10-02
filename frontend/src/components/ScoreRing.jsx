@@ -4,8 +4,8 @@ const R = (SIZE - STROKE) / 2;
 const CIRC = 2 * Math.PI * R;
 
 function ringColor(score) {
-  if (score >= 70) return "var(--green)";
-  if (score >= 50) return "var(--yellow)";
+  if (score >= 70) return "var(--text-1)";
+  if (score >= 50) return "var(--text-2)";
   return "var(--text-3)";
 }
 

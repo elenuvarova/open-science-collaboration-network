@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getInstitutions } from "../api";
 import EmptyState from "../components/EmptyState";
+import Icon from "../components/Icon";
 
 const ROLES = [
   { key: "research",   label: "Research lead",        types: ["education", "university"] },
@@ -45,11 +46,12 @@ function GapGrid({ institutions, isConsortium = false }) {
               : strengthLevel(count);
           }
 
-          const label = level === "strong" ? "Covered ✓" : level === "medium" ? "Partial" : "Gap";
+          const label = level === "strong" ? "Covered" : level === "medium" ? "Partial" : "Gap";
+          const glyph = level === "strong" ? "check" : level === "medium" ? "alert" : "close";
           return (
             <div className="gap-card" key={role.key}>
               <div className="gap-card-title">{role.label}</div>
-              <div className={`gap-card-status gap-${level}`}>{label}</div>
+              <div className={`gap-card-status gap-${level}`}>{label} <Icon name={glyph} size={16} /></div>
               <div className="muted" style={{ fontSize: "var(--text-xs)", marginTop: "var(--sp-1)" }}>
                 {count} {role.key === "geographic" ? "countries" : "institutions"}
               </div>
@@ -112,7 +114,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium })
 
   if (error && consortium.length === 0) return (
     <EmptyState
-      icon="⚠️"
+      icon="alert"
       role="alert"
       title="Couldn’t load network data"
       body="The server didn’t respond — it may be waking up. Give it a moment and try again."
