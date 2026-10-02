@@ -159,7 +159,31 @@ function HoverCard({ inst, anchor }) {
   );
 }
 
-export default function Shortlist({ topicId, consortium = [], onToggleConsortium, onGoToGaps, profileId = null, onOpenProfile, onCloseProfile }) {
+const MAX_COMPARE = 4; // keep in sync with MAX_COMPARE in App.jsx
+
+// Compare tray: sticks to the bottom of the viewport while 2+ partners are picked.
+function CompareTray({ compare, onClear, onOpen }) {
+  const full = compare.length >= MAX_COMPARE;
+  return (
+    <section className="compare-tray" aria-label="Partners to compare">
+      <div className="compare-tray-main">
+        <ul className="compare-tray-names">
+          {compare.map((c) => <li key={c.id} className="tag" title={c.name}>{c.name || `Partner ${c.id}`}</li>)}
+        </ul>
+        {/* The disabled checkboxes point here, so the reason is read out with them. */}
+        <p id="compare-limit-reason" className="compare-tray-note muted">
+          {full ? "Limit reached: you can compare up to 4 partners. Untick one to pick another." : `${compare.length} of ${MAX_COMPARE} selected`}
+        </p>
+      </div>
+      <div className="compare-tray-actions">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClear}>Clear</button>
+        <button type="button" className="btn btn-primary" onClick={onOpen}>Compare ({compare.length})</button>
+      </div>
+    </section>
+  );
+}
+
+export default function Shortlist({ topicId, consortium = [], onToggleConsortium, onGoToGaps, profileId = null, onOpenProfile, onCloseProfile, compare = [], onToggleCompare, onClearCompare, onOpenCompare }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [country, setCountry] = useState("");
@@ -212,6 +236,8 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
   }
 
   const consortiumIds = new Set(consortium.map(i => i.id));
+  const compareIds = new Set(compare.map(c => c.id));
+  const compareFull = compare.length >= MAX_COMPARE;
   const isDefault = weights != null && Object.keys(SCORE_MAX).every((k) => weights[k] === SCORE_MAX[k]);
   const custom = weights != null && !isDefault;
   const rows = custom
@@ -379,6 +405,29 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             <span className={`score-pill ${scoreClass(inst.partner_fit_score)}`}>
               {inst.partner_fit_score.toFixed(0)}
             </span>
+            {onToggleCompare && (() => {
+              const picked = compareIds.has(inst.id);
+              const blocked = compareFull && !picked;
+              return (
+                // The row opens the profile on click, so the label must not bubble.
+                <label
+                  className={`compare-check${blocked ? " is-disabled" : ""}`}
+                  title={blocked ? "You can compare up to 4 partners. Untick one to pick another." : undefined}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    id={`compare-${inst.id}`}
+                    type="checkbox"
+                    checked={picked}
+                    disabled={blocked}
+                    aria-label={`Compare ${inst.name}`}
+                    aria-describedby={blocked ? "compare-limit-reason" : undefined}
+                    onChange={() => onToggleCompare(inst)}
+                  />
+                  <span className="compare-check-text" aria-hidden="true">Compare</span>
+                </label>
+              );
+            })()}
             {onToggleConsortium && (
               <button
                 className={`consortium-toggle${inConsortium ? " is-active" : ""}`}
@@ -394,6 +443,27 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
       })}
 
       <HoverCard inst={hovered} anchor={hoverAnchor} />
+
+      {onToggleCompare && (
+        <>
+          {/* Always mounted so a screen reader hears the count change (the tray itself only exists from 2 picks). */}
+          <p className="sr-only" role="status" aria-live="polite">
+            {compare.length ? `${compare.length} of ${MAX_COMPARE} partners selected for comparison.` : ""}
+          </p>
+          {compare.length >= 2 && (
+            <CompareTray
+              compare={compare}
+              onClear={() => {
+                // The tray unmounts, so hand keyboard focus back to the row the user last ticked.
+                const last = compare[compare.length - 1].id;
+                onClearCompare();
+                requestAnimationFrame(() => document.getElementById(`compare-${last}`)?.focus());
+              }}
+              onOpen={onOpenCompare}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }

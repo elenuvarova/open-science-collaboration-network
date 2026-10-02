@@ -22,6 +22,10 @@ export const getSuggestions = (topic, ids, role) => {
   if (role) p.set("role", role);
   return get("/suggest?" + p);
 };
+// Who in a consortium already works together (max 20 ids):
+// { topic_id, members, pairs: [{a, b, coauthor, project, weight}], isolated, weak, bridges }.
+export const getTies = (topic, ids) =>
+  get("/consortium/ties?" + new URLSearchParams({ topic, ids: ids.join(",") }));
 // Open + forthcoming Horizon Europe call topics matched to a noda topic,
 // nearest deadline first. { topic_id, calls: CallOut[], fetched_at, stale }.
 export const getCalls = (topicId) => get(`/calls?topic=${topicId}`);

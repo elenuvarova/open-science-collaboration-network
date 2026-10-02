@@ -16,8 +16,15 @@ const TYPE_MAP = {
   missing:     { className: "type-other",     label: "Unknown" },
 };
 
-export default function TypeBadge({ type }) {
+function resolve(type) {
   const key = type?.toLowerCase().replace(/ /g, "_") || "unknown";
-  const { className, label } = TYPE_MAP[key] || TYPE_MAP.unknown;
+  return TYPE_MAP[key] || TYPE_MAP.unknown;
+}
+
+// The label a badge shows, so "university" and "education" compare as equal.
+export const typeLabel = (type) => resolve(type).label;
+
+export default function TypeBadge({ type }) {
+  const { className, label } = resolve(type);
   return <span className={"type-badge " + className}>{label}</span>;
 }
