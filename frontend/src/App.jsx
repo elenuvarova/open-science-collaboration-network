@@ -7,6 +7,7 @@ import SearchView from "./pages/SearchView";
 import MethodologyView from "./pages/MethodologyView";
 import CallsView from "./pages/CallsView";
 import PipelineView from "./pages/PipelineView";
+import CompareView from "./pages/CompareView";
 import DeadlineBanner from "./components/DeadlineBanner";
 import Tour from "./components/Tour";
 import Icon from "./components/Icon";
@@ -37,21 +38,28 @@ function loadConsortia() {
   }
 }
 
-// "method" is reachable by link (data stamp, landing footer) but has no nav tab.
-const VALID_PAGES = new Set([...PAGES.map(p => p.id), "method"]);
+// "method" and "compare" are reachable by link but have no nav tab: "method" from the
+// data stamp and landing footer, "compare" from the shortlist's compare tray.
+const VALID_PAGES = new Set([...PAGES.map(p => p.id), "method", "compare"]);
+const HIDDEN_LABELS = { method: "Methodology", compare: "Compare partners" };
+const MAX_COMPARE = 4;
 
 // Hash format: #/<page>/<topicId>[/<institutionId>][?c=<id>,<id>…] — e.g. #/shortlist/3/445.
 // ?c= carries a shared consortium (see "Copy share link" in the Gap view).
+// ?ids= carries the partners being compared (#/compare/3?ids=12,45,78, at most 4).
 // All parts optional and guarded so a malformed hash never throws. The third
 // segment deep-links an open institution profile (only used on the shortlist).
 function parseHash() {
-  const m = (window.location.hash || "").match(/^#\/([a-z]+)(?:\/(\d+))?(?:\/(\d+))?(?:\?c=([\d,]+))?/i);
+  const m = (window.location.hash || "").match(/^#\/([a-z]+)(?:\/(\d+))?(?:\/(\d+))?(?:\?(?:c=([\d,]+)|ids=([\d,]+)))?/i);
   if (!m) return {};
   const shared = m[4] ? m[4].split(",").filter(Boolean).map(Number).slice(0, 30) : [];
+  const ids = m[5]
+    ? [...new Set(m[5].split(",").filter(Boolean).map(Number).filter((n) => n > 0))].slice(0, MAX_COMPARE)
+    : [];
   const page = VALID_PAGES.has(m[1]) ? m[1] : undefined;
   const topicId = m[2] != null ? Number(m[2]) : undefined;
   const instId = m[3] != null ? Number(m[3]) : undefined;
-  return { page, topicId, instId, shared };
+  return { page, topicId, instId, shared, ids };
 }
 
 export default function App() {
@@ -70,7 +78,7 @@ export default function App() {
   // Per-view heading. On page change we move focus here so keyboard / screen-reader
   // users are taken to the new view and hear its name (WCAG 2.4.3 / 2.4.6).
   const headingRef = useRef(null);
-  const pageLabel = page === "method" ? "Methodology" : (PAGES.find(p => p.id === page)?.label || "");
+  const pageLabel = HIDDEN_LABELS[page] || PAGES.find(p => p.id === page)?.label || "";
   useEffect(() => { headingRef.current?.focus(); }, [page]);
 
   // Consortium is scoped per topic (an org's Partner Fit Score only means
@@ -142,6 +150,35 @@ export default function App() {
     setConsortiumByTopic(prev => ({ ...prev, [topicId]: [] }));
   }
 
+  // Partners picked for side-by-side comparison on the shortlist: [{ id, name }], at
+  // most MAX_COMPARE, for the current topic only (a score only means something within
+  // its topic). Kept here so the picks survive the trip to the compare page and back.
+  // A deep link (#/compare/3?ids=1,2) supplies bare ids; the compare page fills in names.
+  const [compare, setCompare] = useState(() => {
+    const h = parseHash();
+    return h.page === "compare" ? (h.ids || []).map(id => ({ id, name: "" })) : [];
+  });
+  function toggleCompare(inst) {
+    setCompare(prev => {
+      if (prev.some(c => c.id === inst.id)) return prev.filter(c => c.id !== inst.id);
+      return prev.length >= MAX_COMPARE ? prev : [...prev, { id: inst.id, name: inst.name }];
+    });
+  }
+  // The compare page reports the institutions it loaded; fill in any missing names.
+  function resolveCompare(rows) {
+    setCompare(prev => {
+      const next = prev.map(c => {
+        const r = rows.find(x => x.id === c.id);
+        return r && r.name !== c.name ? { id: c.id, name: r.name } : c;
+      });
+      return next.every((c, i) => c === prev[i]) ? prev : next;
+    });
+  }
+  function openProfileFromCompare(id) {
+    setProfileId(id);
+    setPage("shortlist");
+  }
+
   function loadTopics() {
     setTopicsError(false);
     getTopics()
@@ -155,7 +192,7 @@ export default function App() {
           // A deep-linked profile only makes sense under its own topic — if the
           // hashed topic didn't resolve, drop the stale profile so it can't render
           // an institution that belongs to a different topic.
-          if (!match) setProfileId(null);
+          if (!match) { setProfileId(null); setCompare([]); }
         }
       })
       .catch(() => setTopicsError(true));
@@ -169,6 +206,9 @@ export default function App() {
     const onHash = () => {
       const h = parseHash();
       if (h.page) setPage(h.page);
+      if (h.page === "compare" && h.ids.length) {
+        setCompare(prev => h.ids.map(id => prev.find(c => c.id === id) || { id, name: "" }));
+      }
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -180,11 +220,13 @@ export default function App() {
   useEffect(() => {
     if (topicId == null) return;
     const base = `#/${page}/${topicId}`;
-    const next = page === "shortlist" && profileId != null ? `${base}/${profileId}` : base;
+    let next = base;
+    if (page === "shortlist" && profileId != null) next = `${base}/${profileId}`;
+    else if (page === "compare" && compare.length) next = `${base}?ids=${compare.map(c => c.id).join(",")}`;
     if (window.location.hash !== next) {
       window.history.replaceState(null, "", next);
     }
-  }, [page, topicId, profileId]);
+  }, [page, topicId, profileId, compare]);
 
   // The map and the pipeline board want the full width (six columns).
   const isWide = page === "network" || page === "pipeline";
@@ -227,7 +269,7 @@ export default function App() {
                 <select
                   className="topic-select"
                   value={topicId ?? ""}
-                  onChange={(e) => { setTopicId(Number(e.target.value)); setProfileId(null); track("topic_changed", { topic: Number(e.target.value) }); }}
+                  onChange={(e) => { setTopicId(Number(e.target.value)); setProfileId(null); setCompare([]); track("topic_changed", { topic: Number(e.target.value) }); }}
                   style={{ paddingRight: "var(--sp-6)", appearance: "none", WebkitAppearance: "none" }}
                 >
                   {topics.map((t) => (
@@ -280,7 +322,7 @@ export default function App() {
             <button className="btn btn-ghost btn-sm" onClick={() => setPage("pipeline")}>→ Track outreach</button>
           </div>
         )}
-        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} onGoToPipeline={() => setPage("pipeline")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} />}
+        {topicId && page === "shortlist" && <Shortlist topicId={topicId} consortium={consortium} onToggleConsortium={toggleConsortium} onGoToGaps={() => setPage("gaps")} onGoToPipeline={() => setPage("pipeline")} profileId={profileId} onOpenProfile={setProfileId} onCloseProfile={() => setProfileId(null)} compare={compare} onToggleCompare={toggleCompare} onClearCompare={() => setCompare([])} onOpenCompare={() => setPage("compare")} />}
         {topicId && page === "network"   && (
           <Suspense fallback={<div className="spinner" role="status" aria-live="polite">Loading the network…</div>}>
             <NetworkMap topicId={topicId} />
@@ -292,6 +334,7 @@ export default function App() {
         {topicId && page === "brief"     && <BriefView topicId={topicId} />}
         {topicId && page === "search"    && <SearchView topicId={topicId} />}
         {topicId && page === "method"    && <MethodologyView />}
+        {topicId && page === "compare"   && <CompareView topicId={topicId} topicName={topics.find(t => t.id === topicId)?.name} ids={compare.map(c => c.id)} consortium={consortium} onToggleConsortium={toggleConsortium} onOpenProfile={openProfileFromCompare} onBack={() => setPage("shortlist")} onResolve={resolveCompare} />}
       </main>
     </div>
   );

@@ -6,6 +6,7 @@ import TypeBadge from "../components/TypeBadge";
 import { ASSOCIATED_LIST_URL, checkEligibility, countryName, isWidening } from "../horizon";
 import { track } from "../analytics";
 import SuggestedPartners from "../components/SuggestedPartners";
+import TiesMatrix from "../components/TiesMatrix";
 
 // Roles are inferred from each organisation's ROR type — what kind of organisation
 // it is, not what it would do in a project. The UI says so; the mapping is the
@@ -266,6 +267,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium, o
         </>
       )}
       {mode === "consortium" && <SuggestedPartners topicId={topicId} consortium={consortium} onToggleConsortium={onToggleConsortium} />}
+      {mode === "consortium" && <TiesMatrix topicId={topicId} consortium={consortium} onToggleConsortium={onToggleConsortium} />}
     </div>
   );
 }

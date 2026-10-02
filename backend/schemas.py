@@ -161,6 +161,49 @@ class SuggestionOut(BaseModel):
     score: float = 0.0  # blended rank score, 0-100
     linked_partners: int = 0  # how many consortium members it is connected to
     why: str = ""
+
+
+# --- Consortium ties ("who already works together") ---------------------------
+
+class TieMember(BaseModel):
+    id: int
+    name: str
+    country: Optional[str] = None
+    type: Optional[str] = None
+
+
+class TiePair(BaseModel):
+    a: int  # smaller institution id of the pair
+    b: int  # larger institution id of the pair
+    coauthor: float = 0.0  # summed coauthor-edge weight for this topic
+    project: float = 0.0   # summed project-edge weight for this topic
+    weight: float = 0.0    # coauthor + project
+
+
+class BridgeLink(BaseModel):
+    member_id: int
+    weight: float = 0.0  # summed edge weight between the bridge and that member
+
+
+class TieBridge(BaseModel):
+    id: int
+    name: str
+    country: Optional[str] = None
+    type: Optional[str] = None
+    partner_fit_score: float = 0.0
+    eu_projects: int = 0
+    connects: list[BridgeLink] = []  # consortium members it is tied to, strongest first
+
+
+class TiesOut(BaseModel):
+    topic_id: int
+    members: list[TieMember] = []  # requested ids that exist, ascending id
+    pairs: list[TiePair] = []      # only pairs with a recorded tie, strongest first
+    isolated: list[int] = []       # members with no tie to any other member
+    weak: list[int] = []           # tied, but total tie weight below the weak threshold
+    bridges: list[TieBridge] = []  # up to 5 outside institutions, best first
+
+
 class CallOut(BaseModel):
     identifier: str                      # e.g. HORIZON-CL5-2027-01-D1-10
     title: str
