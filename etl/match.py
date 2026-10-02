@@ -14,6 +14,20 @@ HIGH = 90
 REVIEW_FLOOR = 75
 
 
+def accept_match(method: str, confidence: float, accept_unconfirmed: bool) -> bool:
+    """Whether a best_match result counts as a participation.
+
+    Methods: fuzzy_high (>=90), ror (75-90 confirmed by ROR), fuzzy_review (75-90,
+    ROR could not confirm), unmatched. fuzzy_review is accepted only when
+    accept_unconfirmed is True.
+    """
+    if confidence < REVIEW_FLOOR or method == "unmatched":
+        return False
+    if method == "fuzzy_review":
+        return accept_unconfirmed
+    return True
+
+
 def build_openalex_index(institutions: list[dict]) -> tuple[dict, dict]:
     """Return (by_ror, by_country_name).
 

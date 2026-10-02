@@ -15,6 +15,18 @@ function years(p) {
 // A coauthor edge can also include shared EU projects (one edge per pair in the ETL).
 const EDGE_LABELS = { coauthor: "co-authorship", project: "EU projects" };
 
+// Split known: clean counts ("co-authored 3 works · 2 shared EU projects").
+// Unknown (null counts, rows from before the split): the old type labels.
+function edgeText(c) {
+  if (c.coauthor_works == null || c.shared_projects == null) {
+    return c.edge_types.map((t) => EDGE_LABELS[t] || t).join(" + ");
+  }
+  const parts = [];
+  if (c.coauthor_works > 0) parts.push(`co-authored ${c.coauthor_works} ${c.coauthor_works === 1 ? "work" : "works"}`);
+  if (c.shared_projects > 0) parts.push(`${c.shared_projects} shared EU ${c.shared_projects === 1 ? "project" : "projects"}`);
+  return parts.join(" · ");
+}
+
 // Evidence behind the score: CORDIS projects, totals and the closest co-partners.
 export default function EvidenceSection({ id, topicId }) {
   const [data, setData] = useState(null);
@@ -113,7 +125,7 @@ function EvidenceBody({ data }) {
               <div className="evidence-main">
                 <div className="evidence-title">{c.name}</div>
                 <div className="inst-meta">
-                  {[c.country, c.edge_types.map((t) => EDGE_LABELS[t] || t).join(" + ")].filter(Boolean).join(" · ")}
+                  {[c.country, edgeText(c)].filter(Boolean).join(" · ")}
                 </div>
               </div>
               <TypeBadge type={c.type} />

@@ -29,14 +29,23 @@ function uniqueInitials(members) {
   });
 }
 
-// The ETL stores one edge per pair. A "coauthor" edge's weight is co-authored works
-// plus 0.5 per shared EU project, so it is a strength, never a clean count of works.
-// A "project" edge (no co-authorship) counts shared EU projects.
+// The ETL stores one edge per pair, with the split behind its weight (split_known).
+// Known split: coauthor = co-authored works, project = shared EU projects, both true
+// counts. Legacy rows (split not known yet): a "coauthor" weight is works plus 0.5 per
+// shared EU project, so it is a strength, never a clean count of works.
 const fmtW = (n) => String(Math.round(n * 10) / 10);
 const worksText = (n) => `co-authorship tie, strength ${fmtW(n)} (may include shared EU projects)`;
 const projectsText = (n) => (Number.isInteger(n) ? `${n} shared EU ${n === 1 ? "project" : "projects"}` : `EU project tie, strength ${fmtW(n)}`);
 
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
 function describeTie(p) {
+  if (p.split_known) {
+    const known = [];
+    if (p.coauthor > 0) known.push(`co-authored ${plural(p.coauthor, "work", "works")}`);
+    if (p.project > 0) known.push(plural(p.project, "shared EU project", "shared EU projects"));
+    return known.join(" · ");
+  }
   const parts = [];
   if (p.coauthor > 0) parts.push(worksText(p.coauthor));
   if (p.project > 0) parts.push(projectsText(p.project));
@@ -46,6 +55,7 @@ function describeTie(p) {
 const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
 function Grid({ members, tied, maxW }) {
+  const anySplit = [...tied.values()].some((p) => p.split_known);
   const ini = uniqueInitials(members);
   return (
     <>
@@ -101,7 +111,7 @@ function Grid({ members, tied, maxW }) {
         <span className="ties-swatch is-weak" aria-hidden="true" /> Weaker
         <span className="ties-swatch is-strong" aria-hidden="true" /> Stronger
         · The number is the tie strength: each co-authored work counts 1, each shared EU project 0.5
-        (or 1 when the pair never co-authored).
+        (or 1 when the pair never co-authored).{anySplit && " Hover or select a cell for the counts."}
       </p>
     </>
   );

@@ -112,6 +112,9 @@ class CoPartner(BaseModel):
     type: Optional[str] = None
     edge_types: list[str] = []  # subset of coauthor | project
     weight: float = 0.0
+    # True counts; None when the split is unknown (rows from before the split existed).
+    coauthor_works: Optional[int] = None
+    shared_projects: Optional[int] = None
 
 
 class EvidenceOut(BaseModel):
@@ -176,9 +179,13 @@ class TieMember(BaseModel):
 class TiePair(BaseModel):
     a: int  # smaller institution id of the pair
     b: int  # larger institution id of the pair
-    coauthor: float = 0.0  # summed coauthor-edge weight for this topic
-    project: float = 0.0   # summed project-edge weight for this topic
-    weight: float = 0.0    # coauthor + project
+    # split_known=True: coauthor = co-authored works, project = shared EU projects
+    # (true counts). False (legacy rows): strengths, a coauthor strength may include
+    # shared projects.
+    coauthor: float = 0.0
+    project: float = 0.0
+    weight: float = 0.0    # combined tie strength: works + 0.5 per shared project
+    split_known: bool = False
 
 
 class BridgeLink(BaseModel):

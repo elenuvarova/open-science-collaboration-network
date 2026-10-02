@@ -14,6 +14,8 @@ __all__ = ["Base", "SessionLocal", "db_kind", "engine", "models"]
 
 def init_schema():
     Base.metadata.create_all(bind=engine)
+    from migrate import ensure_edge_split_columns
+    ensure_edge_split_columns(engine)
     _ensure_edge_topic_id()
     _ensure_work_composite_key()
 

@@ -8,6 +8,7 @@ from sqlalchemy import case, func, true
 from sqlalchemy.orm import Session
 
 from db import get_db
+from edge_split import edge_split
 from models import CollaborationEdge, Institution, Project, ProjectParticipant
 from ratelimit import limiter
 from schemas import CoPartner, EvidenceOut, EvidenceProject, EvidenceTotals
@@ -91,12 +92,24 @@ def get_evidence(
         eq = eq.filter(CollaborationEdge.topic_id == topic)
     weight: dict[int, float] = defaultdict(float)
     etypes: dict[int, set] = defaultdict(set)
+    counts: dict[int, list] = defaultdict(lambda: [0.0, 0.0, True])  # works, projects, split known
     for e in eq.all():
         other = e.target_institution_id if e.source_institution_id == institution_id else e.source_institution_id
         if other == institution_id:
             continue
         weight[other] += e.weight or 0.0
-        if e.type:
+        works, shared, known = edge_split(e)
+        c = counts[other]
+        c[0] += works
+        c[1] += shared
+        c[2] = c[2] and known
+        if known:
+            # A folded "coauthor" edge may also carry shared projects: list what is really there.
+            if works:
+                etypes[other].add("coauthor")
+            if shared:
+                etypes[other].add("project")
+        elif e.type:
             etypes[other].add(e.type)
     top_ids = sorted(weight, key=lambda i: (-weight[i], i))[:MAX_PARTNERS]
     insts = (
@@ -111,6 +124,8 @@ def get_evidence(
             type=insts[i].type,
             edge_types=sorted(etypes[i]),
             weight=round(weight[i], 2),
+            coauthor_works=round(counts[i][0]) if counts[i][2] else None,
+            shared_projects=round(counts[i][1]) if counts[i][2] else None,
         )
         for i in top_ids
         if i in insts
