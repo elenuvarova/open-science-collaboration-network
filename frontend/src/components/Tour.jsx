@@ -43,7 +43,14 @@ export default function Tour({ onClose }) {
   useEffect(() => {
     triggerRef.current = document.activeElement;
     dialogRef.current?.focus();
+    // Belt and braces for aria-modal: if anything moves focus outside the dialog,
+    // bring it back, so keyboard users can never tab into the page underneath.
+    const keepFocus = (e) => {
+      if (dialogRef.current && !dialogRef.current.contains(e.target)) dialogRef.current.focus();
+    };
+    document.addEventListener("focusin", keepFocus);
     return () => {
+      document.removeEventListener("focusin", keepFocus);
       if (triggerRef.current && typeof triggerRef.current.focus === "function") {
         triggerRef.current.focus();
       }

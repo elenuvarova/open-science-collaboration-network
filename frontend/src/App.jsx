@@ -64,6 +64,8 @@ function parseHash() {
 
 export default function App() {
   const [topics, setTopics] = useState([]);
+  const topicsRef = useRef([]);
+  topicsRef.current = topics;
   const [topicId, setTopicId] = useState(null);
   const [topicsError, setTopicsError] = useState(false);
   const [page, setPage] = useState(() => parseHash().page || "shortlist");
@@ -79,7 +81,9 @@ export default function App() {
   // users are taken to the new view and hear its name (WCAG 2.4.3 / 2.4.6).
   const headingRef = useRef(null);
   const pageLabel = HIDDEN_LABELS[page] || PAGES.find(p => p.id === page)?.label || "";
-  useEffect(() => { headingRef.current?.focus(); }, [page]);
+  // Not while the tour is open: its dialog owns focus (this effect runs after the
+  // tour's own focus call and used to pull focus out of the modal).
+  useEffect(() => { if (!showTour) headingRef.current?.focus(); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Consortium is scoped per topic (an org's Partner Fit Score only means
   // something within the topic it was matched on) and persisted to localStorage
@@ -104,13 +108,14 @@ export default function App() {
   }
 
   // A shared link (#/gaps/3?c=12,45) replaces this topic's consortium with the
-  // shared one. Read once on load; the hash sync below then drops ?c from the URL.
+  // shared one. Read on load and on hashchange (a link pasted into an open tab);
+  // the hash sync below then drops ?c from the URL.
   const [sharedNotice, setSharedNotice] = useState(null);
-  const sharedRef = useRef(parseHash().shared || []);
+  const [sharedIds, setSharedIds] = useState(() => parseHash().shared || []);
   useEffect(() => {
-    const ids = sharedRef.current;
+    const ids = sharedIds;
     if (topicId == null || !ids.length) return;
-    sharedRef.current = [];
+    setSharedIds([]);
     Promise.all(ids.map((id) => getInstitution(id, topicId).catch(() => null)))
       .then((rows) => {
         const found = rows.filter(Boolean);
@@ -119,7 +124,7 @@ export default function App() {
         setSharedNotice(`Loaded a shared consortium of ${found.length} ${found.length === 1 ? "partner" : "partners"}.`);
         track("consortium_opened_shared", { topic: topicId, size: found.length });
       });
-  }, [topicId]);
+  }, [topicId, sharedIds]);
   // "Build consortium for this call" on the Calls page: remember the call and jump to
   // the shortlist (same topic — calls are matched per topic). activeCall drives the
   // DeadlineBanner shown above the shortlist and the gap view.
@@ -206,6 +211,8 @@ export default function App() {
     const onHash = () => {
       const h = parseHash();
       if (h.page) setPage(h.page);
+      if (h.topicId != null && topicsRef.current.some((t) => t.id === h.topicId)) setTopicId(h.topicId);
+      if (h.shared?.length) setSharedIds(h.shared);
       if (h.page === "compare" && h.ids.length) {
         setCompare(prev => h.ids.map(id => prev.find(c => c.id === id) || { id, name: "" }));
       }
