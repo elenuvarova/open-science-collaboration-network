@@ -42,12 +42,12 @@ def _parse_ids(raw: str) -> list[int]:
 
 def _why(types: set, partners: int, eu_projects: int) -> str:
     who = f"{partners} of your partners"
-    if "coauthor" in types and "project" in types:
-        parts = [f"co-authored and in EU projects with {who}"]
-    elif "project" in types:
-        parts = [f"in EU projects with {who}"]
+    # A "coauthor" edge may also carry shared EU projects (the ETL folds them in),
+    # so only a project-only edge can be described as "EU projects".
+    if "coauthor" in types:
+        parts = [f"co-authorship ties with {who}"]
     else:
-        parts = [f"co-authored with {who}"]
+        parts = [f"in EU projects with {who}"]
     if eu_projects:
         parts.append(f"EU projects {eu_projects}")
     return " · ".join(parts)

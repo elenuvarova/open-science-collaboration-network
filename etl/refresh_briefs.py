@@ -26,7 +26,8 @@ def main() -> int:
         print(f"refresh_briefs: {name}")
         db = SessionLocal()
         try:
-            embed_topic(db, name)
+            if not embed_topic(db, name):
+                failures += 1  # no brief written: report it, so the run isn't logged as ok
             db.commit()
         except Exception as e:  # noqa: BLE001
             db.rollback()

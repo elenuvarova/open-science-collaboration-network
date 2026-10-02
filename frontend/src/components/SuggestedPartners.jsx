@@ -31,7 +31,7 @@ export default function SuggestedPartners({ topicId, consortium = [], onToggleCo
     let cancelled = false;
     setLoading(true);
     setError(false);
-    getSuggestions(topicId, idsKey.split(",").map(Number), role)
+    getSuggestions(topicId, idsKey.split(",").map(Number).slice(0, 50), role) // API cap
       .then((d) => { if (!cancelled) setItems(d); })
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });

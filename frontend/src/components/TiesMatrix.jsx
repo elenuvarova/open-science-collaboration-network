@@ -29,11 +29,12 @@ function uniqueInitials(members) {
   });
 }
 
-// Edge weights are counts (works, projects) except where the ETL folded a half-weighted
-// project tie into a co-authorship edge; a fractional weight is then not a clean count.
+// The ETL stores one edge per pair. A "coauthor" edge's weight is co-authored works
+// plus 0.5 per shared EU project, so it is a strength, never a clean count of works.
+// A "project" edge (no co-authorship) counts shared EU projects.
 const fmtW = (n) => String(Math.round(n * 10) / 10);
-const worksText = (n) => (Number.isInteger(n) ? `co-authored ${n} ${n === 1 ? "work" : "works"}` : `co-authorship strength ${fmtW(n)}`);
-const projectsText = (n) => (Number.isInteger(n) ? `${n} shared EU ${n === 1 ? "project" : "projects"}` : `EU project strength ${fmtW(n)}`);
+const worksText = (n) => `co-authorship tie, strength ${fmtW(n)} (may include shared EU projects)`;
+const projectsText = (n) => (Number.isInteger(n) ? `${n} shared EU ${n === 1 ? "project" : "projects"}` : `EU project tie, strength ${fmtW(n)}`);
 
 function describeTie(p) {
   const parts = [];
@@ -99,7 +100,8 @@ function Grid({ members, tied, maxW }) {
         <span className="ties-swatch is-none" aria-hidden="true" /> No recorded tie
         <span className="ties-swatch is-weak" aria-hidden="true" /> Weaker
         <span className="ties-swatch is-strong" aria-hidden="true" /> Stronger
-        · The number is the tie strength: co-authored works plus shared EU projects.
+        · The number is the tie strength: each co-authored work counts 1, each shared EU project 0.5
+        (or 1 when the pair never co-authored).
       </p>
     </>
   );

@@ -196,22 +196,15 @@ def parse_call(raw: dict, today: date) -> Optional[dict]:
 
 # ── Matching ───────────────────────────────────────────────────────────────
 
-_model = None
-_model_lock = threading.Lock()
-
-
 def _get_model():
-    """Same lazy fastembed model as routers/search.py (its own handle: no import cycle)."""
-    global _model
-    with _model_lock:
-        if _model is None:
-            try:
-                from fastembed import TextEmbedding
-                _model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
-            except Exception:  # noqa: BLE001 — offline / no model cache: keyword fallback
-                logger.warning("embedding model unavailable; matching calls by keywords only")
-                return None
-        return _model
+    """The one MiniLM instance that routers/search.py loads (~100 MB), shared rather
+    than loaded twice. Imported lazily to avoid an import cycle at startup."""
+    try:
+        from routers.search import _get_model as search_model
+        return search_model()
+    except Exception:  # noqa: BLE001 — offline / no model cache: keyword fallback
+        logger.warning("embedding model unavailable; matching calls by keywords only")
+        return None
 
 
 _WORD = re.compile(r"[a-z0-9]+")
@@ -300,7 +293,8 @@ def match_score(topic_name: str, topic_keywords: list[str], call: dict) -> float
 
 # ── Cache ──────────────────────────────────────────────────────────────────
 
-_lock = threading.Lock()
+_lock = threading.Lock()          # guards _cache reads/writes (held briefly)
+_refreshing = threading.Lock()    # at most one fetch at a time
 _cache: dict = {"calls": None, "fetched_at": 0.0, "failed_at": 0.0}
 
 
@@ -310,30 +304,57 @@ def reset_cache() -> None:
     _topic_vec_cache.clear()
 
 
+def _refresh() -> bool:
+    """Fetch + embed and swap the cache. Returns True on success. Never raises."""
+    try:
+        calls = fetch_calls()
+        embed_calls(calls)
+        with _lock:
+            _cache.update(calls=calls, fetched_at=time.time(), failed_at=0.0)
+        return True
+    except Exception:  # noqa: BLE001 — upstream down / shape changed: degrade, don't 500
+        logger.exception("EU Funding & Tenders fetch failed")
+        with _lock:
+            _cache["failed_at"] = time.time()
+        return False
+
+
+def _refresh_in_background() -> None:
+    try:
+        _refresh()
+    finally:
+        _refreshing.release()
+
+
 def get_calls() -> tuple[list[dict], bool, Optional[str]]:
     """Return (calls, stale, fetched_at_iso). Never raises.
 
-    Fresh within 12 h. Past that we try to refresh; if the portal is down we
-    keep the old copy with stale=True (or [] if we never had one), and wait
-    10 minutes before trying again so a dead upstream doesn't slow every request.
+    Fresh within 12 h. Past that, if we already have a copy we return it at once
+    (stale=True) and refresh in one background thread — a slow EU portal must not
+    hold request threads. Only the very first fill blocks, and only one request
+    does the work (the others wait for it). After a failed refresh we wait 10
+    minutes before trying again.
     """
+    now = time.time()
     with _lock:
-        now = time.time()
         have = _cache["calls"] is not None
         fresh = have and now - _cache["fetched_at"] < CACHE_TTL
         backing_off = now - _cache["failed_at"] < RETRY_AFTER
-        if not fresh and not backing_off:
-            try:
-                calls = fetch_calls()
-                embed_calls(calls)
-                _cache.update(calls=calls, fetched_at=time.time(), failed_at=0.0)
-                have = fresh = True
-            except Exception:  # noqa: BLE001 — upstream down / shape changed: degrade, don't 500
-                logger.exception("EU Funding & Tenders fetch failed")
-                _cache["failed_at"] = time.time()
+    if not fresh and not backing_off:
+        if have:
+            if _refreshing.acquire(blocking=False):
+                threading.Thread(target=_refresh_in_background, name="calls-refresh", daemon=True).start()
+        else:
+            # Nothing to serve yet: one request fills the cache, concurrent ones wait.
+            with _refreshing:
+                with _lock:
+                    have = _cache["calls"] is not None
+                if not have:
+                    _refresh()
+    with _lock:
         calls = _cache["calls"] or []
-        stale = not fresh
         fetched = _cache["fetched_at"]
+        stale = not (fetched and time.time() - fetched < CACHE_TTL)
     iso = datetime.fromtimestamp(fetched, timezone.utc).isoformat(timespec="seconds") if fetched else None
     return calls, stale, iso
 

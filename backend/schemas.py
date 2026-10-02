@@ -86,6 +86,7 @@ class BenchmarkOut(BaseModel):
     p75_countries: Optional[float] = None
     programmes: dict = {}
     coordinator_types: dict = {}
+    coordinators_identified: int = 0
 # --- Partner evidence + suggestions -----------------------------------------
 
 class EvidenceProject(BaseModel):

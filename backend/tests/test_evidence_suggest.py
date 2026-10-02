@@ -130,13 +130,13 @@ def test_suggest_ranks_and_excludes_consortium(client):
     top = out[0]
     assert top["id"] == 3  # linked to both partners + higher fit beats a single stronger link
     assert top["linked_partners"] == 2
-    assert top["why"] == "co-authored and in EU projects with 2 of your partners · EU projects 14"
+    assert top["why"] == "co-authorship ties with 2 of your partners · EU projects 14"
 
 
 def test_suggest_why_without_eu_projects(client):
     out = client.get("/api/suggest?topic=1&ids=2").json()
     ngo = next(s for s in out if s["id"] == 4)
-    assert ngo["why"] == "co-authored with 1 of your partners"  # no EU-projects suffix when 0
+    assert ngo["why"] == "co-authorship ties with 1 of your partners"  # no EU-projects suffix when 0
 
 
 def test_suggest_role_filter(client):

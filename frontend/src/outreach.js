@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getEvidence } from "./api";
-import { formatDate } from "./components/callUtils";
+import { currentDeadline, formatDate } from "./components/callUtils";
 
 // Outreach kit: a plain-text first message and a printable meeting card for one
 // partner. Everything factual in them comes from GET /api/institutions/{id}/evidence;
@@ -87,8 +87,9 @@ export function buildDraft({ inst, topicName, call, evidence, consortium }) {
     : `I am preparing a Horizon Europe proposal${topicName ? ` on ${topicName}` : ""}.`;
   const concept = "[Sentence 1: what the project will do and why it matters.] [Sentence 2: what the consortium will deliver and who benefits.]";
 
-  const timeline = call?.next_deadline
-    ? `The call closes on ${formatDate(call.next_deadline)}. [Proposed next step, for example a 30-minute call, and by when I need your answer.]`
+  const deadline = currentDeadline(call);
+  const timeline = deadline
+    ? `The call closes on ${formatDate(deadline)}. [Proposed next step, for example a 30-minute call, and by when I need your answer.]`
     : "[Timeline: the call deadline, and by when I need your answer.]";
 
   return [

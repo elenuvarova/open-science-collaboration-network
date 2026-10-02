@@ -50,8 +50,9 @@ export default function MethodologyView() {
         <h3 id="m-match">Matching EU projects to institutions</h3>
         <p>
           CORDIS and OpenAlex share no identifier. Names are compared within the same country by fuzzy matching.
-          Matches scoring 90 or more are accepted, 75–90 are confirmed through ROR, and anything below is left out
-          rather than guessed. Universities and research institutes match well; small companies with inconsistent
+          Matches scoring 90 or more are accepted. Matches scoring 75–90 are checked against ROR when ROR knows the
+          organisation, and otherwise accepted on name similarity alone, which can occasionally pair the wrong
+          organisation. Anything below 75 is left out rather than guessed. Universities and research institutes match well; small companies with inconsistent
           names often don’t, so their EU project counts can be too low.
         </p>
       </section>

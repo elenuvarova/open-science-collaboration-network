@@ -12,7 +12,8 @@ function years(p) {
   return p.start_year || p.end_year || null;
 }
 
-const EDGE_LABELS = { coauthor: "co-authored", project: "EU projects" };
+// A coauthor edge can also include shared EU projects (one edge per pair in the ETL).
+const EDGE_LABELS = { coauthor: "co-authorship", project: "EU projects" };
 
 // Evidence behind the score: CORDIS projects, totals and the closest co-partners.
 export default function EvidenceSection({ id, topicId }) {
@@ -80,7 +81,7 @@ function EvidenceBody({ data }) {
 
       <h4 className="evidence-h">Recent projects</h4>
       {projects.length === 0 ? (
-        <p className="muted evidence-empty">No CORDIS projects on record for this institution.</p>
+        <p className="muted evidence-empty">No EU projects strictly on this topic for this institution.</p>
       ) : (
         <>
           <ul className="evidence-list">

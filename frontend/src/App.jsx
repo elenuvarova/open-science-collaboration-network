@@ -53,7 +53,7 @@ const MAX_COMPARE = 4;
 function parseHash() {
   const m = (window.location.hash || "").match(/^#\/([a-z]+)(?:\/(\d+))?(?:\/(\d+))?(?:\?(?:c=([\d,]+)|ids=([\d,]+)))?/i);
   if (!m) return {};
-  const shared = m[4] ? m[4].split(",").filter(Boolean).map(Number).slice(0, 30) : [];
+  const shared = m[4] ? [...new Set(m[4].split(",").map(Number).filter((n) => n > 0))].slice(0, 30) : [];
   const ids = m[5]
     ? [...new Set(m[5].split(",").filter(Boolean).map(Number).filter((n) => n > 0))].slice(0, MAX_COMPARE)
     : [];
@@ -112,6 +112,7 @@ export default function App() {
   // shared one. Read on load and on hashchange (a link pasted into an open tab);
   // the hash sync below then drops ?c from the URL.
   const [sharedNotice, setSharedNotice] = useState(null);
+  const [sharedUndo, setSharedUndo] = useState(null);
   const [sharedIds, setSharedIds] = useState(() => parseHash().shared || []);
   useEffect(() => {
     const ids = sharedIds;
@@ -121,7 +122,16 @@ export default function App() {
       .then((rows) => {
         const found = rows.filter(Boolean);
         if (!found.length) return;
-        setConsortiumByTopic((prev) => ({ ...prev, [topicId]: found }));
+        // Replacing the user's own consortium is reversible: the notice offers Undo.
+        let previous = [];
+        setConsortiumByTopic((prev) => {
+          previous = prev[topicId] || [];
+          return { ...prev, [topicId]: found };
+        });
+        setSharedUndo(() => () => {
+          setConsortiumByTopic((prev) => ({ ...prev, [topicId]: previous }));
+          setSharedNotice(null);
+        });
         setSharedNotice(`Loaded a shared consortium of ${found.length} ${found.length === 1 ? "partner" : "partners"}.`);
         track("consortium_opened_shared", { topic: topicId, size: found.length });
       });
@@ -198,7 +208,8 @@ export default function App() {
           // A deep-linked profile only makes sense under its own topic — if the
           // hashed topic didn't resolve, drop the stale profile so it can't render
           // an institution that belongs to a different topic.
-          if (!match) { setProfileId(null); setCompare([]); }
+          // A link whose topic doesn't exist must not overwrite another topic's work.
+          if (!match) { setProfileId(null); setCompare([]); setSharedIds([]); }
         }
       })
       .catch(() => setTopicsError(true));
@@ -307,6 +318,7 @@ export default function App() {
         {sharedNotice && (
           <div className="notice" role="status">
             <Icon name="check" size={16} /> <span>{sharedNotice}</span>
+            {sharedUndo && <button className="btn btn-secondary btn-sm" onClick={sharedUndo}>Undo — restore my consortium</button>}
             <button className="btn btn-ghost btn-sm" onClick={() => setSharedNotice(null)}>Dismiss</button>
           </div>
         )}

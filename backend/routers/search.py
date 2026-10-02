@@ -1,3 +1,4 @@
+import threading
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
@@ -9,17 +10,19 @@ from schemas import WorkSearchResult
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 _model = None
+_model_lock = threading.Lock()  # search and the calls warm-up may ask at the same time
 
 
 def _get_model():
     global _model
-    if _model is None:
-        try:
-            from fastembed import TextEmbedding
-            _model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        except Exception:
-            return None
-    return _model
+    with _model_lock:
+        if _model is None:
+            try:
+                from fastembed import TextEmbedding
+                _model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+            except Exception:
+                return None
+        return _model
 
 
 # Embedding search loads a topic's full embedding set and runs a matmul per call,

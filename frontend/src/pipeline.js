@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { daysUntil, formatDate } from "./components/callUtils";
+import { currentDeadline, daysUntil, formatDate } from "./components/callUtils";
 
 // Partner pipeline: where each consortium member stands in the outreach funnel.
 // Local-first. Stored under its own key so the consortium shape stays untouched:
@@ -138,8 +138,9 @@ const pad = (n) => String(n).padStart(2, "0");
  * `text` always carries the meaning; colour only reinforces it.
  */
 export function lockInfo(call) {
-  if (!call?.next_deadline) return null;
-  const [y, m, d] = String(call.next_deadline).slice(0, 10).split("-").map(Number);
+  const deadline = currentDeadline(call);
+  if (!deadline) return null;
+  const [y, m, d] = deadline.split("-").map(Number);
   if (!y || !m || !d) return null;
   const lock = new Date(y, m - 1, d - LOCK_LEAD_DAYS);
   const iso = `${lock.getFullYear()}-${pad(lock.getMonth() + 1)}-${pad(lock.getDate())}`;
@@ -156,5 +157,5 @@ export function lockInfo(call) {
     text = `Partner list locks in ${days === 1 ? "1 day" : `${days} days`}`;
     level = days < AMBER_DAYS ? "soon" : "calm";
   }
-  return { iso, days, level, text, dateLabel: formatDate(iso), deadlineLabel: formatDate(call.next_deadline) };
+  return { iso, days, level, text, dateLabel: formatDate(iso), deadlineLabel: formatDate(deadline) };
 }

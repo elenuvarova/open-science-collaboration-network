@@ -8,7 +8,7 @@ import time
 from collections import Counter
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
@@ -20,9 +20,11 @@ from models import (
     InstitutionMetric,
     Project,
     ProjectParticipant,
+    Topic,
     TopicBrief,
     Work,
 )
+from ratelimit import limiter
 from schemas import BenchmarkOut, MetaOut
 from topic_match import topic_project_clause
 
@@ -42,7 +44,8 @@ def _cached(key, build):
 
 
 @router.get("/meta", response_model=MetaOut)
-def get_meta(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_meta(request: Request, db: Session = Depends(get_db)):
     def build():
         # Last successful FULL ETL run. No fallback: the brief date moved when only
         # the briefs were regenerated, which would overstate how fresh the scores
@@ -72,7 +75,15 @@ def _quantile(values: list[int], q: float) -> float:
 
 
 @router.get("/benchmark", response_model=BenchmarkOut)
-def get_benchmark(topic: int = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_benchmark(request: Request, topic: int = Query(...), db: Session = Depends(get_db)):
+    # Unknown topics 404 before touching the cache, so a ?topic=1..N loop can't grow it.
+    if db.get(Topic, topic) is None:
+        raise HTTPException(status_code=404, detail="topic not found")
+    return _benchmark(topic, db)
+
+
+def _benchmark(topic: int, db: Session):
     """How funded consortia look on this topic: multi-country EU projects (CORDIS)
     on the topic's keywords that at least one institution in its network took part
     in. Single-country grants (ERC, MSCA fellowships) are left out — they aren't
@@ -102,7 +113,8 @@ def get_benchmark(topic: int = Query(...), db: Session = Depends(get_db)):
             .filter(ProjectParticipant.project_id.in_(consortium_ids), ProjectParticipant.role == "coordinator")
             .all()
         )
-        n_coord = sum(coord_types.values()) or 1
+        n_matched = sum(coord_types.values())
+        n_coord = n_matched or 1
         return BenchmarkOut(
             topic_id=topic,
             projects=len(projects),
@@ -111,6 +123,9 @@ def get_benchmark(topic: int = Query(...), db: Session = Depends(get_db)):
             p75_countries=_quantile(country_counts, 0.75) if country_counts else None,
             programmes=dict(programmes),
             coordinator_types={k: round(v / n_coord, 3) for k, v in coord_types.most_common()},
+            # Shares cover only coordinators matched to an OpenAlex institution
+            # (small companies often aren't), so the UI states the coverage.
+            coordinators_identified=n_matched,
         )
     return _cached(("benchmark", topic), build)
 
@@ -124,6 +139,6 @@ def warm_benchmarks() -> None:
     try:
         with SessionLocal() as db:
             for (topic_id,) in db.query(Topic.id).all():
-                get_benchmark(topic=topic_id, db=db)
+                _benchmark(topic_id, db)
     except Exception as exc:  # noqa: BLE001 — warm-up is best effort
         print(f"benchmark warm-up skipped: {exc}")

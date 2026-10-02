@@ -130,11 +130,12 @@ def _embedder():
     return TextEmbedding(model_name=EMBED_MODEL)
 
 
-def embed_topic(db, topic_name: str) -> None:
+def embed_topic(db, topic_name: str) -> bool:
+    """Embed new works and regenerate the brief. Returns True when a brief was written."""
     topic = db.query(Topic).filter_by(name=topic_name).first()
     if not topic:
         print(f"  embed: topic '{topic_name}' not found, skipping")
-        return
+        return False
 
     works = db.query(Work).filter_by(topic_id=topic.id).all()
     texts_with_meta = [
@@ -197,7 +198,7 @@ def embed_topic(db, topic_name: str) -> None:
     # ── 2. Brief generation ──────────────────────────────────────────────────
     if not (os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY")):
         print("  embed: neither GROQ_API_KEY nor GEMINI_API_KEY set — skipping brief generation")
-        return
+        return False
 
     top_insts = (
         db.query(InstitutionMetric, Institution)
@@ -252,7 +253,7 @@ def embed_topic(db, topic_name: str) -> None:
 
     brief_text, model = _generate_brief(prompt)
     if not brief_text:
-        return
+        return False
 
     now = datetime.now(timezone.utc).isoformat()
     existing = db.query(TopicBrief).filter_by(topic_id=topic.id).first()
@@ -269,3 +270,4 @@ def embed_topic(db, topic_name: str) -> None:
         ))
     db.flush()
     print(f"  embed: brief generated ({len(brief_text)} chars, model={model})")
+    return True

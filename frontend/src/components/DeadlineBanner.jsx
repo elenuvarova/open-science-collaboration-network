@@ -1,5 +1,5 @@
 import Icon from "./Icon";
-import { daysLabel, daysUntil, formatDate, urgency } from "./callUtils";
+import { currentDeadline, daysLabel, daysUntil, formatDate, urgency } from "./callUtils";
 import "./calls.css";
 
 /**
@@ -11,7 +11,8 @@ import "./calls.css";
  */
 export default function DeadlineBanner({ call, onDismiss, onOpenPortal }) {
   if (!call) return null;
-  const days = daysUntil(call.next_deadline);
+  const deadline = currentDeadline(call);
+  const days = daysUntil(deadline);
   const level = urgency(days);
   const cls = level === "urgent" ? " is-urgent" : level === "soon" ? " is-soon" : "";
 
@@ -21,8 +22,9 @@ export default function DeadlineBanner({ call, onDismiss, onOpenPortal }) {
       <div className="deadline-banner-main">
         <span className="deadline-banner-title">Building a consortium for {call.identifier}</span>
         <span className="deadline-banner-meta">
-          Deadline {formatDate(call.next_deadline)}
-          {days != null && <> · <strong>{daysLabel(days)}</strong></>}
+          {deadline
+            ? <>Deadline {formatDate(deadline)}{days != null && <> · <strong>{daysLabel(days)}</strong></>}</>
+            : <strong>All deadlines for this call have passed — pick another call.</strong>}
         </span>
       </div>
       {call.url && (

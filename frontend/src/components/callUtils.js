@@ -20,6 +20,17 @@ export function daysUntil(iso) {
   return Math.round((parseDay(iso) - today) / 86400000);
 }
 
+// The deadline that still matters: the first cut-off on or after today. A saved
+// call keeps the next_deadline it had when it was picked; once that cut-off passes
+// a multi-stage call can still be open, so always derive it from `deadlines`.
+// Returns null when every deadline has passed.
+export function currentDeadline(call) {
+  if (!call) return null;
+  const all = [...(call.deadlines || []), call.next_deadline].filter(Boolean).map((d) => String(d).slice(0, 10));
+  const upcoming = [...new Set(all)].sort().filter((d) => daysUntil(d) >= 0);
+  return upcoming[0] || null;
+}
+
 export function daysLabel(days) {
   if (days == null) return "";
   if (days < 0) return "Closed";

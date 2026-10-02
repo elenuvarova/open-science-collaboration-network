@@ -193,6 +193,8 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
   const [reloadKey, setReloadKey] = useState(0);
   const [weights, setWeights] = useState(null); // null = server score
   const [showWeights, setShowWeights] = useState(false);
+  const isDefault = weights != null && Object.keys(SCORE_MAX).every((k) => weights[k] === SCORE_MAX[k]);
+  const custom = weights != null && !isDefault;
   const [hovered, setHovered] = useState(null);
   const [hoverAnchor, setHoverAnchor] = useState(null);
   const hoverTimer = useRef(null);
@@ -205,14 +207,15 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
     if (COUNTRY_GROUPS[country]) params.countries = COUNTRY_GROUPS[country].codes.join(",");
     else if (country) params.country = country;
     if (type) params.type = type;
-    if (minScore > 0) params.min_score = minScore;
+    // With custom weights the score filter applies to the custom score, client-side.
+    if (minScore > 0 && !custom) params.min_score = minScore;
     let cancelled = false;
     getInstitutions(params)
       .then((d) => { if (!cancelled) setList(d); })
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [topicId, country, type, minScore, reloadKey]);
+  }, [topicId, country, type, minScore, custom, reloadKey]);
 
   const hasFilters = Boolean(country || type || minScore > 0);
   function clearFilters() { setCountry(""); setType(""); setMinScore(0); }
@@ -238,12 +241,16 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
   const consortiumIds = new Set(consortium.map(i => i.id));
   const compareIds = new Set(compare.map(c => c.id));
   const compareFull = compare.length >= MAX_COMPARE;
-  const isDefault = weights != null && Object.keys(SCORE_MAX).every((k) => weights[k] === SCORE_MAX[k]);
-  const custom = weights != null && !isDefault;
+  // Custom scores live in their own field: partner_fit_score always stays the
+  // published score, so a partner added (and saved, printed, exported) from a
+  // re-weighted list never carries the user's private weights.
   const rows = custom
-    ? list.map((i) => ({ ...i, partner_fit_score: reweighted(i, weights) }))
-        .sort((a, b) => b.partner_fit_score - a.partner_fit_score)
+    ? list.map((i) => ({ ...i, custom_score: reweighted(i, weights) }))
+        .filter((i) => i.custom_score >= minScore)
+        .sort((a, b) => b.custom_score - a.custom_score)
     : list;
+  const shown = (inst) => inst.custom_score ?? inst.partner_fit_score;
+  const original = (inst) => list.find((x) => x.id === inst.id) || inst;
 
   return (
     <div>
@@ -270,7 +277,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                 const rows = consortium.map((inst, i) =>
                   [i + 1, inst.name, inst.country || "", inst.type || "", inst.partner_fit_score.toFixed(0)]
                 );
-                downloadCsv("consortium.csv", ["Rank", "Name", "Country", "Type", "Score"], rows);
+                downloadCsv("consortium.csv", ["Order added", "Name", "Country", "Type", "Score"], rows);
               }}
             >
               Export consortium
@@ -331,10 +338,10 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             onClick={() => {
               const csvRows = rows.slice(0, 50).map((inst, i) =>
                 [i + 1, inst.name, inst.country || "", inst.type || "",
-                 inst.partner_fit_score.toFixed(0), inst.eu_projects, inst.recent_works]
+                 inst.partner_fit_score.toFixed(0), ...(custom ? [shown(inst).toFixed(0)] : []), inst.eu_projects, inst.recent_works]
               );
               track("csv_exported", { topic: topicId, rows: csvRows.length, custom_weights: custom });
-              downloadCsv("partners.csv", ["Rank", "Name", "Country", "Type", "Score", "EU Projects", "Works"], csvRows);
+              downloadCsv("partners.csv", ["Rank", "Name", "Country", "Type", "Score", ...(custom ? ["Score (your weights)"] : []), "EU Projects", "Works"], csvRows);
             }}
           >
             Export CSV
@@ -411,8 +418,8 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                 {inst.eu_projects > 0 && <><span>·</span><span>{inst.eu_projects} EU projects</span></>}
               </div>
             </div>
-            <span className={`score-pill ${scoreClass(inst.partner_fit_score)}`}>
-              {inst.partner_fit_score.toFixed(0)}
+            <span className={`score-pill ${scoreClass(shown(inst))}`}>
+              {shown(inst).toFixed(0)}
             </span>
             {onToggleCompare && (() => {
               const picked = compareIds.has(inst.id);
@@ -431,7 +438,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                     disabled={blocked}
                     aria-label={`Compare ${inst.name}`}
                     aria-describedby={blocked ? "compare-limit-reason" : undefined}
-                    onChange={() => onToggleCompare(inst)}
+                    onChange={() => onToggleCompare(original(inst))}
                   />
                   <span className="compare-check-text" aria-hidden="true">Compare</span>
                 </label>
@@ -442,7 +449,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                 className={`consortium-toggle${inConsortium ? " is-active" : ""}`}
                 title={inConsortium ? "Remove from consortium" : "Add to consortium"}
                 aria-label={inConsortium ? "Remove from consortium" : "Add to consortium"}
-                onClick={(e) => { e.stopPropagation(); onToggleConsortium(inst); }}
+                onClick={(e) => { e.stopPropagation(); onToggleConsortium(original(inst)); }}
               >
                 <Icon name={inConsortium ? "check" : "plus"} size={14} />
               </button>

@@ -89,7 +89,8 @@ function EligibilityCard({ consortium }) {
       )}
       <p className="muted gap-note">
         Indicative check for Research &amp; Innovation and Innovation Actions. It can’t verify that partners are
-        independent of each other, and some calls set stricter rules. <a href={ASSOCIATED_LIST_URL} target="_blank" rel="noreferrer">Current list of associated countries <Icon name="external" size={12} /></a>
+        independent of each other, and some calls set stricter rules. Canada, South Korea and New Zealand
+        are associated for Pillar II (the clusters) only. <a href={ASSOCIATED_LIST_URL} target="_blank" rel="noreferrer">Current list of associated countries <Icon name="external" size={12} /></a>
       </p>
     </section>
   );
@@ -127,7 +128,7 @@ function BenchmarkCard({ topicId, countries, isConsortium }) {
           )}
           {Object.keys(bm.coordinator_types).length > 0 && (
             <p className="muted gap-note gap-coord">
-              Usually coordinated by{" "}
+              {bm.coordinators_identified ? `Of the ${bm.coordinators_identified} coordinators we could identify:` : "Coordinators we could identify:"}{" "}
               {Object.entries(bm.coordinator_types).slice(0, 3).map(([t, share]) => (
                 <span key={t} className="gap-coord-item"><TypeBadge type={t} /> {Math.round(share * 100)}%</span>
               ))}
