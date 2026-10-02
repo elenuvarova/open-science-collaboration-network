@@ -11,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 
 from db import Base, db_kind, engine
 from eu_calls import get_calls
+from migrate import ensure_edge_split_columns
 from ratelimit import limiter
 from routers import brief, calls, consortium, delivery, evidence, graph, health, institutions, meta, search, suggest, topics
 from scheduler import start_scheduler
@@ -19,6 +20,8 @@ from scheduler import start_scheduler
 import models  # noqa: E402,F401
 
 Base.metadata.create_all(bind=engine)
+# create_all never adds columns to an existing table: add the newer ones.
+ensure_edge_split_columns(engine)
 
 app = FastAPI(title="noda")
 

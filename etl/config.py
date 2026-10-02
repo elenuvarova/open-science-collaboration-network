@@ -12,6 +12,12 @@ YEAR_FROM = 2020
 YEAR_TO = 2025
 MAX_WORKS = 1000
 
+# CORDIS org -> OpenAlex institution matches scoring 75-90 with no ROR confirmation
+# ("fuzzy_review") are name similarity only and can pair the WRONG organisation
+# (e.g. a university with a same-named hospital). Off = only fuzzy_high (>=90) and
+# ROR-confirmed matches count: EU project counts become conservative.
+ACCEPT_UNCONFIRMED_FUZZY = False
+
 CORDIS_DATASETS = {
     "HORIZON": "https://cordis.europa.eu/data/cordis-HORIZONprojects-csv.zip",
     "H2020": "https://cordis.europa.eu/data/cordis-h2020projects-csv.zip",

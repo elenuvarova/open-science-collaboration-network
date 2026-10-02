@@ -97,8 +97,8 @@ def test_pairs_split_by_type_and_sum_both_directions(client):
     assert body["topic_id"] == 1
     assert [m["id"] for m in body["members"]] == [1, 2, 3, 4]
     assert body["pairs"] == [
-        {"a": 1, "b": 2, "coauthor": 3.0, "project": 1.0, "weight": 4.0},
-        {"a": 2, "b": 3, "coauthor": 1.0, "project": 0.0, "weight": 1.0},
+        {"a": 1, "b": 2, "coauthor": 3.0, "project": 1.0, "weight": 4.0, "split_known": False},
+        {"a": 2, "b": 3, "coauthor": 1.0, "project": 0.0, "weight": 1.0, "split_known": False},
     ]
 
 
@@ -140,7 +140,7 @@ def test_unknown_ids_dropped_and_single_member(client):
 
 def test_ties_scoped_to_topic(client):
     body = client.get("/api/consortium/ties?topic=2&ids=1,4").json()
-    assert body["pairs"] == [{"a": 1, "b": 4, "coauthor": 9.0, "project": 0.0, "weight": 9.0}]
+    assert body["pairs"] == [{"a": 1, "b": 4, "coauthor": 9.0, "project": 0.0, "weight": 9.0, "split_known": False}]
     assert body["isolated"] == []
 
 

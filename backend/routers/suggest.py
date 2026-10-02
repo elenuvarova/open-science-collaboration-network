@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
+from edge_split import edge_split
 from models import CollaborationEdge, Institution, InstitutionMetric
 from ratelimit import limiter
 from schemas import SuggestionOut
@@ -40,8 +41,20 @@ def _parse_ids(raw: str) -> list[int]:
     return ids
 
 
-def _why(types: set, partners: int, eu_projects: int) -> str:
+def _why(types: set, partners: int, eu_projects: int, works: float = 0.0, shared: float = 0.0, known: bool = False) -> str:
     who = f"{partners} of your partners"
+    if known:
+        # Split known: clean counts (co-authored works / shared EU projects).
+        w, p = round(works), round(shared)
+        wt = f"{w} {'work' if w == 1 else 'works'}"
+        pt = f"{p} EU {'project' if p == 1 else 'projects'}"
+        if w and p:
+            text = f"co-authored {wt} and shared {pt} with {who}"
+        elif w:
+            text = f"co-authored {wt} with {who}"
+        else:
+            text = f"shared {pt} with {who}"
+        return text + (f" · {eu_projects} EU projects in total" if eu_projects else "")
     # A "coauthor" edge may also carry shared EU projects (the ETL folds them in),
     # so only a project-only edge can be described as "EU projects".
     if "coauthor" in types:
@@ -76,6 +89,7 @@ def suggest(
     # edges between the same two institutions add up.
     pair: dict[tuple[int, int], float] = defaultdict(float)
     etypes: dict[int, set] = defaultdict(set)
+    counts: dict[int, list] = defaultdict(lambda: [0.0, 0.0, True])  # cand -> works, projects, split known
     for e in edges:
         s, t = e.source_institution_id, e.target_institution_id
         if (s in member_set) == (t in member_set):
@@ -84,6 +98,11 @@ def suggest(
         pair[(cand, member)] += e.weight or 0.0
         if e.type:
             etypes[cand].add(e.type)
+        works, projects, known = edge_split(e)
+        c = counts[cand]
+        c[0] += works
+        c[1] += projects
+        c[2] = c[2] and known  # any legacy edge: describe this candidate by strength
     if not pair:
         return []
 
@@ -126,7 +145,7 @@ def suggest(
             eu_projects=eu,
             score=round(score, 1),
             linked_partners=len(linked[inst.id]),
-            why=_why(etypes[inst.id], len(linked[inst.id]), eu),
+            why=_why(etypes[inst.id], len(linked[inst.id]), eu, *counts[inst.id]),
         ))
     out.sort(key=lambda s: (-s.score, s.id))
     return out[:LIMIT]

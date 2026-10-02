@@ -13,6 +13,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from db import get_db
+from edge_split import edge_split
 from models import CollaborationEdge, Institution, InstitutionMetric, Topic
 from ratelimit import limiter
 from schemas import BridgeLink, TieBridge, TieMember, TiePair, TiesOut
@@ -73,7 +74,8 @@ def ties(
 
     # Edges inside the consortium feed the matrix; edges to an outsider feed the
     # bridge search. Several rows for one pair (or per type) are summed.
-    pair: dict[tuple[int, int], dict[str, float]] = defaultdict(lambda: {"coauthor": 0.0, "project": 0.0})
+    pair: dict[tuple[int, int], dict] = defaultdict(
+        lambda: {"coauthor": 0.0, "project": 0.0, "weight": 0.0, "known": True})
     outside: dict[int, dict[int, float]] = defaultdict(lambda: defaultdict(float))  # outsider -> member -> weight
     for e in edges:
         s, t = e.source_institution_id, e.target_institution_id
@@ -81,7 +83,12 @@ def ties(
         if s == t or w <= 0 or e.type not in EDGE_TYPES:
             continue
         if s in member_set and t in member_set:
-            pair[(min(s, t), max(s, t))][e.type] += w
+            works, projects, known = edge_split(e)
+            p = pair[(min(s, t), max(s, t))]
+            p["coauthor"] += works
+            p["project"] += projects
+            p["weight"] += w
+            p["known"] = p["known"] and known  # one legacy row makes the whole pair a strength
         else:
             member, other = (s, t) if s in member_set else (t, s)
             outside[other][member] += w
@@ -89,7 +96,7 @@ def ties(
     out.pairs = sorted(
         (
             TiePair(a=a, b=b, coauthor=round(w["coauthor"], 2), project=round(w["project"], 2),
-                    weight=round(w["coauthor"] + w["project"], 2))
+                    weight=round(w["weight"], 2), split_known=w["known"])
             for (a, b), w in pair.items()
         ),
         key=lambda p: (-p.weight, p.a, p.b),

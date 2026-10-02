@@ -110,7 +110,11 @@ class CollaborationEdge(Base):
     target_institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
     topic_id = Column(Integer, ForeignKey("topic.id"), index=True)
     type = Column(String)  # coauthor | project
-    weight = Column(Float, default=1.0)
+    weight = Column(Float, default=1.0)  # combined: coauthor works + 0.5 per shared project (centrality/layout)
+    # Split behind `weight`, written by the ETL: co-authored works and shared EU
+    # projects (true counts). 0/0 on rows written before the split existed.
+    coauthor_weight = Column(Float, default=0)
+    project_weight = Column(Float, default=0)
 
 
 class InstitutionMetric(Base):

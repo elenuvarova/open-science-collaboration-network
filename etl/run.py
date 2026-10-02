@@ -19,7 +19,7 @@ from collections import defaultdict
 import config
 import load
 from graph import build_graph
-from match import best_match, build_openalex_index
+from match import accept_match, best_match, build_openalex_index
 from models import CollaborationEdge
 from normalize import normalize_name
 from embed import embed_topic
@@ -95,7 +95,7 @@ def run_topic(topic_cfg: dict):
     by_ror, by_country = build_openalex_index(list(all_institutions.values()))
     proj_rows: dict[str, dict] = {}                              # cordis_id → project row (deduped)
     proj_matches: list[tuple[str, list[tuple[str, str]]]] = []   # (cordis_id, [(openalex_id, role)])
-    matched = unmatched = 0
+    matched = unmatched = rejected_unconfirmed = 0
     try:
         for proj in fetch_projects():
             cid = proj["cordis_id"]
@@ -105,12 +105,14 @@ def run_topic(topic_cfg: dict):
             proj_rows[cid] = row
             parts: list[tuple[str, str]] = []
             for p in proj["participants"]:
-                inst_dict, confidence, _ = best_match(p["name"], p["country"], by_ror, by_country)
-                if inst_dict and confidence >= 75:
+                inst_dict, confidence, method = best_match(p["name"], p["country"], by_ror, by_country)
+                if inst_dict and accept_match(method, confidence, config.ACCEPT_UNCONFIRMED_FUZZY):
                     parts.append((inst_dict["openalex_id"], p["role"]))
                     matched += 1
                 else:
                     unmatched += 1
+                    if method == "fuzzy_review":
+                        rejected_unconfirmed += 1
             proj_matches.append((cid, parts))
     finally:
         cordis_mod.CLIMATE_KEYWORDS = orig_keywords  # restore even on error
@@ -163,7 +165,8 @@ def run_topic(topic_cfg: dict):
             if len(ids_here) > 1:
                 project_participants_db.append(ids_here)
         load.insert_project_participants(db, participant_rows)
-        print(f"  → {len(proj_rows)} projects, {matched} matched orgs, {unmatched} unmatched")
+        print(f"  → {len(proj_rows)} projects, {matched} matched orgs, {unmatched} unmatched "
+              f"({rejected_unconfirmed} rejected: 75-90 name match without ROR confirmation)")
 
         # 5. Graph metrics
         print("Step 5/8  Graph metrics…")
@@ -238,7 +241,11 @@ def run_topic(topic_cfg: dict):
             CollaborationEdge.topic_id == topic.id
         ).delete(synchronize_session=False)
         for src, tgt, data in G.edges(data=True):
-            load.add_edge(db, src, tgt, topic.id, data.get("type", "coauthor"), data.get("weight", 1.0))
+            load.add_edge(
+                db, src, tgt, topic.id, data.get("type", "coauthor"), data.get("weight", 1.0),
+                coauthor_weight=data.get("coauthor_weight", 0.0),
+                project_weight=data.get("project_weight", 0.0),
+            )
 
         db.commit()
         print(f"  Done — {len(oa_inst_id_map)} institutions, {len(G.edges)} edges")

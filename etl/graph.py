@@ -30,9 +30,6 @@ def build_graph(
                 a, b = min(uniq[i], uniq[j]), max(uniq[i], uniq[j])
                 coauthor_weights[(a, b)] += 1.0
 
-    for (a, b), w in coauthor_weights.items():
-        G.add_edge(a, b, type="coauthor", weight=w)
-
     project_weights: dict = defaultdict(float)
     for inst_ids in project_participants:
         uniq = list(set(inst_ids))
@@ -41,11 +38,20 @@ def build_graph(
                 a, b = min(uniq[i], uniq[j]), max(uniq[i], uniq[j])
                 project_weights[(a, b)] += 1.0
 
-    for (a, b), w in project_weights.items():
-        if G.has_edge(a, b):
-            G[a][b]["weight"] += w * 0.5  # project edges worth less
+    # One edge per pair. `weight` stays the combined value (centrality/layout);
+    # coauthor_weight / project_weight keep the two components as true counts so
+    # the UI can tell "N co-authored works" from "M shared projects".
+    #   co-authored pair:  type="coauthor", weight = works + 0.5 * projects
+    #   project-only pair: type="project",  weight = projects
+    for pair in sorted(set(coauthor_weights) | set(project_weights)):
+        works = coauthor_weights.get(pair, 0.0)
+        projects = project_weights.get(pair, 0.0)
+        if works:
+            G.add_edge(*pair, type="coauthor", weight=works + projects * 0.5,
+                       coauthor_weight=works, project_weight=projects)
         else:
-            G.add_edge(a, b, type="project", weight=w)
+            G.add_edge(*pair, type="project", weight=projects,
+                       coauthor_weight=0.0, project_weight=projects)
 
     if len(G.nodes) == 0:
         return G, {}
