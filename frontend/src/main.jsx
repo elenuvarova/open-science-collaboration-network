@@ -5,12 +5,13 @@ import "./styles.css";
 
 // A deploy swaps the hashed chunks; a tab opened before it then fails to load a
 // lazy chunk (404). Reload once to pick up the new build instead of a blank page.
-window.addEventListener("vite:preloadError", (event) => {
+window.addEventListener("vite:preloadError", () => {
   try {
     if (sessionStorage.getItem("chunk_reloaded")) return;
     sessionStorage.setItem("chunk_reloaded", "1");
   } catch { /* storage blocked: still reload once per page load */ }
-  event.preventDefault();
+  // No preventDefault: suppressing the error would hand React.lazy an undefined
+  // module and crash before the reload lands.
   window.location.reload();
 });
 window.addEventListener("load", () => {
