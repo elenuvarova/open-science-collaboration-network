@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { searchWorks } from "../api";
+import { track } from "../analytics";
 
 function SimilarityBar({ value }) {
   return (
@@ -44,7 +45,7 @@ export default function SearchView({ topicId }) {
     setLoading(true);
     setError(null);
     searchWorks(q, topicId, 12)
-      .then((r) => { setResults(r); setSearched(true); })
+      .then((r) => { setResults(r); setSearched(true); track("search_performed", { topic: topicId, results: r.length }); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }

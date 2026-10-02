@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { getBrief } from "../api";
+import { track } from "../analytics";
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
   function copy() {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
+      track("brief_copied");
       setTimeout(() => setCopied(false), 2000);
     });
   }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { track } from "../analytics";
 
 const STEPS = [
   {
@@ -32,6 +33,7 @@ export default function Tour({ onClose }) {
 
   function finish() {
     localStorage.setItem("tour_done", "1");
+    track("tour_completed");
     onClose();
   }
 

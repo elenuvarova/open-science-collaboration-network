@@ -6,6 +6,7 @@ import ScoreRing from "../components/ScoreRing";
 import SkeletonList from "../components/SkeletonList";
 import EmptyState from "../components/EmptyState";
 import { SCORE_MAX } from "../components/scoreMeta";
+import { track } from "../analytics";
 
 const COUNTRIES = ["BE", "GB", "NL", "FR", "DE", "SE", "NO", "DK", "FI", "IT", "ES", "PL", "CH", "AT"];
 const TYPES = [
@@ -229,6 +230,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                 [i + 1, inst.name, inst.country || "", inst.type || "",
                  inst.partner_fit_score.toFixed(0), inst.eu_projects, inst.recent_works]
               );
+              track("csv_exported", { topic: topicId, rows: rows.length });
               downloadCsv("partners.csv", ["Rank", "Name", "Country", "Type", "Score", "EU Projects", "Works"], rows);
             }}
           >

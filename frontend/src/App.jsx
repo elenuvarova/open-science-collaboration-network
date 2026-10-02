@@ -7,6 +7,7 @@ import BriefView from "./pages/BriefView";
 import SearchView from "./pages/SearchView";
 import Tour from "./components/Tour";
 import ThemeToggle from "./components/ThemeToggle";
+import { track } from "./analytics";
 
 const PAGES = [
   { id: "shortlist", label: "Partner Shortlist" },
@@ -88,9 +89,9 @@ export default function App() {
     if (topicId == null) return;
     setConsortiumByTopic(prev => {
       const cur = prev[topicId] || [];
-      const next = cur.find(i => i.id === inst.id)
-        ? cur.filter(i => i.id !== inst.id)
-        : [...cur, inst];
+      const removing = !!cur.find(i => i.id === inst.id);
+      const next = removing ? cur.filter(i => i.id !== inst.id) : [...cur, inst];
+      track(removing ? "partner_removed" : "partner_added", { topic: topicId, size: next.length });
       return { ...prev, [topicId]: next };
     });
   }
@@ -173,7 +174,7 @@ export default function App() {
                 <select
                   className="topic-select"
                   value={topicId ?? ""}
-                  onChange={(e) => { setTopicId(Number(e.target.value)); setProfileId(null); }}
+                  onChange={(e) => { setTopicId(Number(e.target.value)); setProfileId(null); track("topic_changed", { topic: Number(e.target.value) }); }}
                   style={{ paddingRight: "var(--sp-6)", appearance: "none", WebkitAppearance: "none" }}
                 >
                   {topics.map((t) => (
