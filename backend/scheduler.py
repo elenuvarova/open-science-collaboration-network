@@ -74,6 +74,18 @@ def _db_is_unseeded() -> bool:
         return True
 
 
+def _log_run(reason: str, started: str, finished: str | None, ok: bool, code: int | None) -> None:
+    """Best-effort ETL run log (etl_run table); never let logging break the scheduler."""
+    try:
+        from db import SessionLocal
+        from models import EtlRun
+        with SessionLocal() as db:
+            db.add(EtlRun(reason=reason, started_at=started, finished_at=finished, ok=ok, exit_code=code))
+            db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("scheduler: could not record ETL run: %s", exc)
+
+
 def _run_etl(reason: str) -> None:
     """Run the ETL as an isolated subprocess; stream its output to our logs.
 
@@ -85,6 +97,7 @@ def _run_etl(reason: str) -> None:
     try:
         logger.info("scheduler: starting ETL (%s) → %s", reason, _ETL_ENTRY)
         start = time.monotonic()
+        started_iso = datetime.now(timezone.utc).isoformat()
         # cwd=_APP_ROOT so `python etl/run.py` puts /app/etl on sys.path[0]
         # (run.py uses bare imports: config, load, graph, …) and its
         # ../backend resolution lands on /app/backend. DATABASE_URL /
@@ -103,6 +116,7 @@ def _run_etl(reason: str) -> None:
             logger.info("etl: %s", line.rstrip())
         rc = proc.wait()
         dur = time.monotonic() - start
+        _log_run(reason, started_iso, datetime.now(timezone.utc).isoformat(), rc == 0, rc)
         if rc == 0:
             logger.info("scheduler: ETL finished OK in %.0fs (%s)", dur, reason)
         else:

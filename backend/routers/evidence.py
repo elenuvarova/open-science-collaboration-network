@@ -4,13 +4,14 @@ from collections import defaultdict
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import case, func
+from sqlalchemy import case, func, true
 from sqlalchemy.orm import Session
 
 from db import get_db
 from models import CollaborationEdge, Institution, Project, ProjectParticipant
 from ratelimit import limiter
 from schemas import CoPartner, EvidenceOut, EvidenceProject, EvidenceTotals
+from topic_match import topic_project_clause
 
 router = APIRouter(prefix="/api/institutions", tags=["evidence"])
 
@@ -33,6 +34,9 @@ def get_evidence(
     if db.get(Institution, institution_id) is None:
         raise HTTPException(status_code=404, detail="institution not found")
 
+    # With a topic, count only that topic's projects (same keyword stems as the ETL).
+    on_topic = topic_project_clause(db, topic) if topic is not None else true()
+
     # One row per project even if the institution is listed twice on it.
     mine = (
         db.query(
@@ -52,12 +56,14 @@ def get_evidence(
         )
         .select_from(mine)
         .join(Project, Project.id == mine.c.project_id)
+        .filter(on_topic)
         .one()
     )
 
     project_rows = (
         db.query(Project, mine.c.is_coord)
         .join(mine, mine.c.project_id == Project.id)
+        .filter(on_topic)
         .order_by(Project.start_date.desc().nullslast(), Project.id.desc())
         .limit(MAX_PROJECTS)
         .all()

@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     JSON,
     Column,
     Date,
@@ -126,3 +127,16 @@ class TopicBrief(Base):
     text = Column(Text, nullable=False)
     generated_at = Column(String)
     model = Column(String)
+
+
+class EtlRun(Base):
+    """One row per scheduled ETL run, so the UI can state when the data was last
+    refreshed (and an operator can see failed runs without the container logs)."""
+    __tablename__ = "etl_run"
+    id = Column(Integer, primary_key=True)
+    reason = Column(String)
+    started_at = Column(String)   # UTC ISO-8601
+    finished_at = Column(String, nullable=True)
+    ok = Column(Boolean, default=False)
+    exit_code = Column(Integer, nullable=True)
+

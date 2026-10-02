@@ -59,7 +59,9 @@ def client():
 
 def _seed(Session):
     db = Session()
-    db.add(Topic(id=1, name="t1"))
+    # Evidence counts only projects matching the topic's keyword stems; every
+    # seeded title contains "project", so all of them are on topic 1.
+    db.add(Topic(id=1, name="t1", keywords=["project"]))
     db.add(Topic(id=2, name="t2"))
     # 1 = focus uni, 2 = uni, 3 = company, 4 = ngo, 5 = isolated uni
     for i, (name, typ) in enumerate(
@@ -149,3 +151,11 @@ def test_suggest_validation(client):
     assert client.get("/api/suggest?topic=1&ids=a,b").status_code == 422
     assert client.get("/api/suggest?topic=1").status_code == 422
     assert client.get("/api/suggest?topic=1&ids=5").json() == []  # no in-topic ties
+
+
+def test_evidence_topic_excludes_off_topic_projects(client):
+    # Topic 2 has no keywords, so it falls back to its name ("t2"): no seeded
+    # project title matches, and the topic-scoped evidence lists none of them.
+    r = client.get("/api/institutions/1/evidence?topic=2").json()
+    assert r["projects"] == []
+    assert r["totals"]["projects"] == 0

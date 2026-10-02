@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from models import (
     CollaborationEdge,
+    EtlRun,
     Institution,
     InstitutionMetric,
     Project,
@@ -23,6 +24,7 @@ from models import (
     Work,
 )
 from schemas import BenchmarkOut, MetaOut
+from topic_match import topic_project_clause
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -42,9 +44,10 @@ def _cached(key, build):
 @router.get("/meta", response_model=MetaOut)
 def get_meta(db: Session = Depends(get_db)):
     def build():
-        # The brief is written in the same ETL run as the scores, so its timestamp
-        # is the best available "data as of" without a separate run log.
-        as_of = db.query(func.max(TopicBrief.generated_at)).scalar()
+        # Last successful ETL run; before the run log existed, fall back to the
+        # newest brief, which the same ETL run writes.
+        as_of = (db.query(func.max(EtlRun.finished_at)).filter(EtlRun.ok.is_(True)).scalar()
+                 or db.query(func.max(TopicBrief.generated_at)).scalar())
         return MetaOut(
             data_as_of=as_of,
             topics=db.query(func.count(distinct(InstitutionMetric.topic_id))).scalar() or 0,
@@ -68,9 +71,11 @@ def _quantile(values: list[int], q: float) -> float:
 
 @router.get("/benchmark", response_model=BenchmarkOut)
 def get_benchmark(topic: int = Query(...), db: Session = Depends(get_db)):
-    """How funded consortia look on this topic: EU projects (CORDIS) that at least
-    one institution in the topic's network took part in. Country counts come from
-    CORDIS's own participant list, so they cover every partner, matched or not."""
+    """How funded consortia look on this topic: multi-country EU projects (CORDIS)
+    on the topic's keywords that at least one institution in its network took part
+    in. Single-country grants (ERC, MSCA fellowships) are left out — they aren't
+    consortia. Country counts come from CORDIS's own participant list, so they
+    cover every partner, matched or not."""
     def build():
         in_topic = (
             select(ProjectParticipant.project_id)
@@ -78,15 +83,21 @@ def get_benchmark(topic: int = Query(...), db: Session = Depends(get_db)):
             .where(InstitutionMetric.topic_id == topic)
             .distinct()
         )
-        projects = db.query(Project.countries, Project.programme).filter(Project.id.in_(in_topic)).all()
-        country_counts = [len(set(c or [])) for c, _ in projects if c]
-        programmes = Counter(p or "other" for _, p in projects)
+        rows = (
+            db.query(Project.id, Project.countries, Project.programme)
+            .filter(Project.id.in_(in_topic), topic_project_clause(db, topic))
+            .all()
+        )
+        projects = [(pid, c, p) for pid, c, p in rows if len(set(c or [])) >= 2]
+        consortium_ids = [pid for pid, _, _ in projects]
+        country_counts = [len(set(c)) for _, c, _ in projects]
+        programmes = Counter(p or "other" for _, _, p in projects)
 
         coord_types = Counter(
             (t or "unknown")
             for (t,) in db.query(Institution.type)
             .join(ProjectParticipant, ProjectParticipant.institution_id == Institution.id)
-            .filter(ProjectParticipant.project_id.in_(in_topic), ProjectParticipant.role == "coordinator")
+            .filter(ProjectParticipant.project_id.in_(consortium_ids), ProjectParticipant.role == "coordinator")
             .all()
         )
         n_coord = sum(coord_types.values()) or 1

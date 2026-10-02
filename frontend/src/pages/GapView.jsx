@@ -115,8 +115,8 @@ function BenchmarkCard({ topicId, countries, isConsortium }) {
         <>
           <p className="gap-bench-lead">
             <span className="gap-bench-num">{Math.round(bm.median_countries)}</span>
-            countries is the median across {plural(bm.projects, "funded EU project", "funded EU projects")} that
-            institutions in this network took part in. The middle half span {Math.round(bm.p25_countries)}–{Math.round(bm.p75_countries)}.
+            countries is the median across {plural(bm.projects, "multi-country EU project", "multi-country EU projects")} on
+            this topic that institutions in this network took part in. The middle half span {Math.round(bm.p25_countries)}–{Math.round(bm.p75_countries)}.
           </p>
           {isConsortium && (
             <div className="bench-bars" aria-hidden="true">
