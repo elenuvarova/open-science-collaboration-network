@@ -65,11 +65,14 @@ function EvidenceBody({ data }) {
   return (
     <>
       <div className="evidence-totals" role="group" aria-label="Evidence totals">
-        <Stat value={totals.projects} label="CORDIS projects" />
+        <Stat value={totals.projects} label="EU projects on this topic" />
         <Stat value={totals.coordinator} label="as coordinator" />
-        <Stat value={fmtEur(totals.ec_contribution)} label="EC funding" />
+        {/* The ETL doesn't store EC amounts yet; show the stat only when there is one. */}
+        {totals.ec_contribution > 0 && <Stat value={fmtEur(totals.ec_contribution)} label="EC funding" />}
       </div>
-      <p className="muted evidence-note">Funding is each project’s total EC contribution, not this institution’s share.</p>
+      {totals.ec_contribution > 0 && (
+        <p className="muted evidence-note">Funding is each project’s total EC contribution, not this institution’s share.</p>
+      )}
 
       <h4 className="evidence-h">Recent projects</h4>
       {projects.length === 0 ? (
