@@ -115,7 +115,21 @@ export default function App() {
   // "Build consortium for this call" on the Calls page: remember the call and jump to
   // the shortlist (same topic — calls are matched per topic). activeCall drives the
   // DeadlineBanner shown above the shortlist and the gap view.
-  const [activeCall, setActiveCall] = useState(null);
+  // Stored per topic so it survives a reload and a call matched to one topic
+  // never leaks into another topic's banner or outreach draft.
+  const [callByTopic, setCallByTopic] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("active_call_by_topic") || "{}"); } catch { return {}; }
+  });
+  const activeCall = (topicId != null && callByTopic[topicId]) || null;
+  function setActiveCall(call) {
+    if (topicId == null) return;
+    setCallByTopic((prev) => {
+      const next = { ...prev };
+      if (call) next[topicId] = call; else delete next[topicId];
+      try { localStorage.setItem("active_call_by_topic", JSON.stringify(next)); } catch { /* non-fatal */ }
+      return next;
+    });
+  }
   function startFromCall(call) {
     setActiveCall(call);
     setProfileId(null);
