@@ -28,7 +28,7 @@ from topic_match import topic_project_clause
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
-_TTL = 3600
+_TTL = 6 * 3600  # data changes weekly; the first build of a topic's benchmark takes seconds
 _cache: dict = {}
 
 
@@ -113,3 +113,17 @@ def get_benchmark(topic: int = Query(...), db: Session = Depends(get_db)):
             coordinator_types={k: round(v / n_coord, 3) for k, v in coord_types.most_common()},
         )
     return _cached(("benchmark", topic), build)
+
+
+def warm_benchmarks() -> None:
+    """Build every topic's benchmark once in the background so the first visitor
+    to Consortium Gaps doesn't wait for the (slow, keyword-heavy) query."""
+    from db import SessionLocal
+    from models import Topic
+
+    try:
+        with SessionLocal() as db:
+            for (topic_id,) in db.query(Topic.id).all():
+                get_benchmark(topic=topic_id, db=db)
+    except Exception as exc:  # noqa: BLE001 — warm-up is best effort
+        print(f"benchmark warm-up skipped: {exc}")

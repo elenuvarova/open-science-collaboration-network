@@ -87,6 +87,7 @@ def _start_etl_scheduler() -> None:
     # Calls page isn't the one that pays for the fetch + embedding (~20 s).
     if os.environ.get("CALLS_WARMUP", "1") == "1":
         threading.Thread(target=get_calls, name="calls-warmup", daemon=True).start()
+        threading.Thread(target=meta.warm_benchmarks, name="benchmark-warmup", daemon=True).start()
 
 if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") == "1":
     public_dir = os.path.join(os.path.dirname(__file__), "public")
