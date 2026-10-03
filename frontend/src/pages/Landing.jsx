@@ -202,16 +202,19 @@ function Constellation() {
   const fill = (k) => `var(--type-${k}-bg)`;
   // One wave from the first hub: hubs appear, threads draw outward from them, and
   // each bead lands as its thread arrives. Delays grow with distance from the seed.
+  // Delays come as classes in 50 ms steps (lp-d-0 … lp-d-31 in landing.css), not
+  // inline styles: the prerendered page carries no style attributes, so the CSP
+  // needs no 'unsafe-inline'.
   const [sx, sy] = hubs[0];
-  const wave = (x, y) => Math.round(Math.hypot(x - sx, y - sy) * 1.6);
+  const wave = (x, y, extra = 0) => `lp-d-${Math.min(31, Math.round((Math.hypot(x - sx, y - sy) * 1.6 + extra) / 50))}`;
   return (
     <svg className="lp-constellation" viewBox="0 0 560 560" aria-hidden="true" focusable="false">
       {edges.map(([x1, y1, x2, y2], i) => (
-        <line key={i} x1={x2} y1={y2} x2={x1} y2={y1} pathLength={1} className="lp-edge" style={{ "--d": `${wave(x2, y2) + 150}ms` }} />
+        <line key={i} x1={x2} y1={y2} x2={x1} y2={y1} pathLength={1} className={`lp-edge ${wave(x2, y2, 150)}`} />
       ))}
       <line x1={hubs[0][0]} y1={hubs[0][1]} x2={hubs[1][0]} y2={hubs[1][1]} pathLength={1} className="lp-pair" />
-      {nodes.map((n, i) => <circle key={i} cx={n.x} cy={n.y} r={n.r} fill={fill(n.kind)} className="lp-bead" style={{ "--d": `${wave(n.x, n.y) + 450}ms` }} />)}
-      {hubs.map(([x, y, k], i) => <circle key={`h${i}`} cx={x} cy={y} r={20} fill={fill(k)} className="lp-bead" style={{ "--d": `${wave(x, y)}ms` }} />)}
+      {nodes.map((n, i) => <circle key={i} cx={n.x} cy={n.y} r={n.r} fill={fill(n.kind)} className={`lp-bead ${wave(n.x, n.y, 450)}`} />)}
+      {hubs.map(([x, y, k], i) => <circle key={`h${i}`} cx={x} cy={y} r={20} fill={fill(k)} className={`lp-bead ${wave(x, y)}`} />)}
       {[hubs[0], hubs[1]].map(([x, y], i) => <circle key={`r${i}`} cx={x} cy={y} r={30} className="lp-ring" />)}
     </svg>
   );

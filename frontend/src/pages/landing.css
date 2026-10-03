@@ -68,6 +68,8 @@
   transform-box: fill-box; transform-origin: center;
 }
 .lp-ring { fill: none; stroke: var(--text-1); stroke-width: 1.5; animation: lp-fade 400ms var(--ease-out) 1300ms both; }
+/* Wave delays for the constellation, in 50 ms steps (see Constellation). */
+.lp-d-0 { --d: 0ms; } .lp-d-1 { --d: 50ms; } .lp-d-2 { --d: 100ms; } .lp-d-3 { --d: 150ms; } .lp-d-4 { --d: 200ms; } .lp-d-5 { --d: 250ms; } .lp-d-6 { --d: 300ms; } .lp-d-7 { --d: 350ms; } .lp-d-8 { --d: 400ms; } .lp-d-9 { --d: 450ms; } .lp-d-10 { --d: 500ms; } .lp-d-11 { --d: 550ms; } .lp-d-12 { --d: 600ms; } .lp-d-13 { --d: 650ms; } .lp-d-14 { --d: 700ms; } .lp-d-15 { --d: 750ms; } .lp-d-16 { --d: 800ms; } .lp-d-17 { --d: 850ms; } .lp-d-18 { --d: 900ms; } .lp-d-19 { --d: 950ms; } .lp-d-20 { --d: 1000ms; } .lp-d-21 { --d: 1050ms; } .lp-d-22 { --d: 1100ms; } .lp-d-23 { --d: 1150ms; } .lp-d-24 { --d: 1200ms; } .lp-d-25 { --d: 1250ms; } .lp-d-26 { --d: 1300ms; } .lp-d-27 { --d: 1350ms; } .lp-d-28 { --d: 1400ms; } .lp-d-29 { --d: 1450ms; } .lp-d-30 { --d: 1500ms; } .lp-d-31 { --d: 1550ms; }
 @keyframes lp-draw { to { stroke-dashoffset: 0; } }
 @keyframes lp-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
 @keyframes lp-fade { from { opacity: 0; } }

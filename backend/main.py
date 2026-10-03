@@ -49,14 +49,23 @@ app = FastAPI(title="noda", lifespan=_lifespan,
 # Compress JSON + the JS/CSS bundles (they were going out uncompressed).
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
-# Security headers on every response. CSP allows exactly what the SPA loads:
-# own assets, Google Fonts, and the self-hosted Umami script + beacon.
+# Security headers on every response. CSP allows exactly what the SPA loads: own
+# assets and fonts (self-hosted), and the self-hosted Umami script + beacon.
+# No 'unsafe-inline' for styles: React sets styles through the CSSOM, which CSP
+# doesn't restrict; the prerendered landing carries no style attributes; the two
+# <style> elements the app does create are allowed by hash (tests/test_csp.py
+# fails if either text changes):
+#   Cytoscape's container rule, and the meeting card's A6 print page size.
+CSP_STYLE_HASHES = (
+    "sha256-pgvDUBa4IjFA2yuSJ2cqcyxmNYJMborsd0ORcRv9vw8=",  # .__________cytoscape_container { position: relative; }
+    "sha256-94IFLoSwEVlKjJaDuHNlor8S55uVCq89QwtP0mBHWNY=",  # @page { size: A6 portrait; margin: 8mm; }
+)
 _CSP = "; ".join([
     "default-src 'self'",
     "script-src 'self' https://stats.ontwrpn.com",
     "connect-src 'self' https://stats.ontwrpn.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self' " + " ".join(f"'{h}'" for h in CSP_STYLE_HASHES),
+    "font-src 'self'",
     "img-src 'self' data:",
     "frame-ancestors 'none'",
     "base-uri 'self'",

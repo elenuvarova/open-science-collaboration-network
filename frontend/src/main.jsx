@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { hydrateRoot } from "react-dom/client";
+import "./fonts/fonts.css";
 import "./styles.css";
 // The landing is prerendered into index.html, so its styles must arrive with the
 // first paint, not with the lazily loaded Landing chunk: that left the hero

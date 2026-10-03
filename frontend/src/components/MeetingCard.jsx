@@ -36,6 +36,8 @@ export default function MeetingCard({ inst, topicId, topicName, call, onPrinted,
         </>
       }
     >
+      {/* Allowed by the CSP by hash (backend/main.py CSP_STYLE_HASHES): change the
+          text and update the hash, or backend/tests/test_csp.py fails. */}
       <style media="print">{"@page { size: A6 portrait; margin: 8mm; }"}</style>
 
       <article className="meeting-card" aria-label={`Meeting card for ${inst.name}`}>
