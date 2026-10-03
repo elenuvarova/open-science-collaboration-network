@@ -1,13 +1,13 @@
-pyalex==0.18
-requests==2.33.1
+pyalex==0.21
+requests==2.34.2
 pandas==2.2.3
-networkx==3.4.2
+networkx==3.7
 python-louvain==0.16
-rapidfuzz==3.10.1
-SQLAlchemy==2.0.36
-psycopg[binary]==3.3.4
-python-dotenv==1.2.2
+rapidfuzz==3.14.6
+SQLAlchemy==2.1.1
+psycopg[binary]==3.3.6
+python-dotenv==1.2.3
 # v2: embeddings (ONNX, no torch) + brief generation
-fastembed==0.4.1
-groq==1.4.0
+fastembed==0.8.1
+groq==1.7.0
 numpy>=1.26
