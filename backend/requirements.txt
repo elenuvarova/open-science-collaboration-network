@@ -1,10 +1,10 @@
 fastapi==0.142.2
 starlette==1.7.0
-uvicorn[standard]==0.34.0
-SQLAlchemy==2.0.36
-psycopg[binary]==3.3.4
-python-dotenv==1.2.2
-slowapi==0.1.9
-fastembed==0.4.1
+uvicorn[standard]==0.54.0
+SQLAlchemy==2.1.1
+psycopg[binary]==3.3.6
+python-dotenv==1.2.3
+slowapi==0.1.10
+fastembed==0.8.1
 numpy>=1.26
 requests>=2.33.1
