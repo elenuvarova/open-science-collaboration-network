@@ -46,6 +46,9 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 _APP_ROOT = os.path.dirname(_BACKEND_DIR)
 _ETL_ENTRY = os.path.join(_APP_ROOT, "etl", "run.py")
 _BRIEFS_ENTRY = os.path.join(_APP_ROOT, "etl", "refresh_briefs.py")
+# Longest a job may run before the watchdog kills it. A full weekly run takes
+# ~45-60 min on the server; the others a few minutes.
+_MAX_RUN_S = {_ETL_ENTRY: 4 * 3600, _BRIEFS_ENTRY: 3600}
 BRIEF_MAX_AGE = timedelta(days=8)
 _OUTPUTS_ENTRY = os.path.join(_APP_ROOT, "etl", "outputs.py")
 
@@ -162,9 +165,18 @@ def _run_etl(reason: str, entry: str = _ETL_ENTRY, label: str = "ETL", record: b
             env=os.environ.copy(),
         )
         assert proc.stdout is not None
-        for line in proc.stdout:
-            logger.info("etl: %s", line.rstrip())
-        rc = proc.wait()
+        # Watchdog: a hung network call (the ETL has several) used to hold the
+        # run lock forever, so every later weekly tick was skipped until a restart.
+        limit = _MAX_RUN_S.get(entry, _MAX_RUN_S[_ETL_ENTRY])
+        watchdog = threading.Timer(limit, _kill, args=(proc, label, limit))
+        watchdog.daemon = True
+        watchdog.start()
+        try:
+            for line in proc.stdout:
+                logger.info("etl: %s", line.rstrip())
+            rc = proc.wait()
+        finally:
+            watchdog.cancel()
         dur = time.monotonic() - start
         if record:
             _log_run(reason, started_iso, datetime.now(timezone.utc).isoformat(), rc == 0, rc)
@@ -176,6 +188,12 @@ def _run_etl(reason: str, entry: str = _ETL_ENTRY, label: str = "ETL", record: b
         logger.exception("scheduler: %s failed to launch (%s): %s", label, reason, exc)
     finally:
         _run_lock.release()
+
+
+def _kill(proc, label: str, limit: float) -> None:
+    if proc.poll() is None:
+        logger.error("scheduler: %s still running after %.0f h → killed", label, limit / 3600)
+        proc.kill()
 
 
 def _seconds_until_next_run(now: datetime) -> float:
@@ -210,7 +228,10 @@ def _scheduler_loop() -> None:
             logger.info("scheduler: project_output empty → running the outputs populate")
             _run_etl("initial-outputs", entry=_OUTPUTS_ENTRY, label="outputs job", record=False)
 
-    # (b) Weekly cadence forever after.
+    # (b) Weekly cadence forever after, plus a daily brief check: the weekly run
+    # keeps the old brief when every LLM provider fails, and that used to go
+    # unnoticed until the container restarted.
+    next_brief_check = time.monotonic() + 24 * 3600
     while True:
         delay = _seconds_until_next_run(datetime.now(timezone.utc))
         logger.info("scheduler: next weekly ETL in %.1f h", delay / 3600)
@@ -222,6 +243,11 @@ def _scheduler_loop() -> None:
             if remaining <= 0:
                 break
             time.sleep(min(remaining, 3600))
+            if time.monotonic() >= next_brief_check:
+                next_brief_check = time.monotonic() + 24 * 3600
+                if os.path.exists(_BRIEFS_ENTRY) and _briefs_are_stale():
+                    logger.warning("scheduler: briefs are stale → refreshing briefs only")
+                    _run_etl("refresh-briefs", entry=_BRIEFS_ENTRY, label="briefs refresh")
         _run_etl("weekly")
 
 

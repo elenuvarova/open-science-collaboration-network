@@ -7,6 +7,8 @@ source for both institution nodes and co-authorship edges.
 import os
 import sys
 
+import functools
+
 import pyalex
 from pyalex import Works
 
@@ -19,6 +21,23 @@ import config
 
 pyalex.config.api_key = os.environ.get("OPENALEX_API_KEY", "")
 pyalex.config.email = "eluvrv@gmail.com"
+# Retry rate limits and server errors (1, 2, 4, 8 s) instead of failing the topic.
+pyalex.config.max_retries = 4
+pyalex.config.retry_backoff_factor = 1
+pyalex.config.retry_http_codes = [429, 500, 502, 503, 504]
+
+# pyalex sends requests with no timeout, so one hung connection blocked the weekly
+# run (and the scheduler lock) forever. Give every request a 60 s timeout.
+_pyalex_session = pyalex.api._get_requests_session
+
+
+def _session_with_timeout():
+    session = _pyalex_session()
+    session.request = functools.partial(session.request, timeout=60)
+    return session
+
+
+pyalex.api._get_requests_session = _session_with_timeout
 
 
 def _reconstruct_abstract(inv_index) -> str:

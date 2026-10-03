@@ -252,7 +252,8 @@ def embed_calls(calls: list[dict]) -> None:
     if model is None or not calls:
         return
     import numpy as np
-    vecs = np.array(list(model.embed([call_text(c) for c in calls])))
+    # Small batches: the default 256 left the API process at ~2.9 GB resident.
+    vecs = np.array(list(model.embed([call_text(c) for c in calls], batch_size=32)))
     vecs = vecs / np.maximum(np.linalg.norm(vecs, axis=1, keepdims=True), 1e-9)
     for call, vec in zip(calls, vecs):
         call["vec"] = vec

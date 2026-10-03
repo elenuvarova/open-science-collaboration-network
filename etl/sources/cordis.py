@@ -6,6 +6,7 @@ filters to climate-related projects by EuroSciVoc / topic keywords.
 import io
 import os
 import re
+import time
 import zipfile
 
 import pandas as pd
@@ -14,6 +15,7 @@ import requests
 import config
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", ".cache")
+CACHE_MAX_AGE_S = 72 * 3600
 
 CLIMATE_KEYWORDS = [
     "climate adapt", "climate resilien", "flood", "drought", "heat wave",
@@ -25,7 +27,10 @@ CLIMATE_KEYWORDS = [
 def _download_zip(url: str, label: str) -> bytes:
     os.makedirs(CACHE_DIR, exist_ok=True)
     cache_file = os.path.join(CACHE_DIR, f"cordis_{label}.zip")
-    if os.path.exists(cache_file):
+    # Reused across the topics of one run, re-downloaded by the next weekly run
+    # (the cache used to live as long as the container, so projects only
+    # refreshed on a redeploy).
+    if os.path.exists(cache_file) and time.time() - os.path.getmtime(cache_file) < CACHE_MAX_AGE_S:
         print(f"  cordis: using cached {label}")
         with open(cache_file, "rb") as f:
             return f.read()

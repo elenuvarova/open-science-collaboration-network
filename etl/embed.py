@@ -17,6 +17,9 @@ from _db import SessionLocal
 from models import Institution, InstitutionMetric, Topic, TopicBrief, Work, WorkEmbedding
 
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+# fastembed defaults to batches of 256: ~5 GB peak for 800 new works on an 8 GB
+# host shared with the API. 32 costs the same time within a few percent.
+EMBED_BATCH = 32
 # Groq retires models without notice (llama-3.3-70b-versatile disappeared in
 # Aug 2026 and briefs silently stopped refreshing). GROQ_MODEL overrides; otherwise
 # take the first of these that the account can actually see.
@@ -198,7 +201,7 @@ def embed_topic(db, topic_name: str) -> bool:
             model = _embedder()
             new_ids, _, new_docs = zip(*new_texts)
             print(f"  embed: encoding {len(new_docs)} works…")
-            new_vecs = list(model.embed(list(new_docs)))
+            new_vecs = list(model.embed(list(new_docs), batch_size=EMBED_BATCH))
             for work_id, vec in zip(new_ids, new_vecs):
                 vec_list = vec.tolist()
                 id_to_vec[work_id] = vec_list
