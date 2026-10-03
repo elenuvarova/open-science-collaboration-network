@@ -14,7 +14,7 @@ from db import get_db
 from models import Institution, Project, ProjectOutput, ProjectParticipant
 from ratelimit import limiter
 from schemas import DeliveryOut, DeliveryTotals
-from topic_match import topic_project_clause
+from topic_match import institution_on_topic
 from params import InstitutionId, OptTopicId
 
 router = APIRouter(prefix="/api/institutions", tags=["delivery"])
@@ -36,7 +36,7 @@ def get_delivery(
         raise HTTPException(status_code=404, detail="institution not found")
 
     # With a topic, only that topic's projects (same keyword rule as the evidence endpoint).
-    on_topic = topic_project_clause(db, topic) if topic is not None else true()
+    on_topic = institution_on_topic(db, topic, institution_id) if topic is not None else true()
 
     # Each project once, even if the institution is listed twice on it.
     mine = select(ProjectParticipant.project_id).where(

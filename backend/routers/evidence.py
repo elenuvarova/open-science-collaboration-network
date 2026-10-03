@@ -12,7 +12,7 @@ from edge_split import edge_split
 from models import CollaborationEdge, Institution, Project, ProjectParticipant
 from ratelimit import limiter
 from schemas import CoPartner, EvidenceOut, EvidenceProject, EvidenceTotals
-from topic_match import topic_project_clause
+from topic_match import institution_on_topic
 from params import InstitutionId, OptTopicId
 
 router = APIRouter(prefix="/api/institutions", tags=["evidence"])
@@ -37,7 +37,7 @@ def get_evidence(
         raise HTTPException(status_code=404, detail="institution not found")
 
     # With a topic, count only that topic's projects (same keyword stems as the ETL).
-    on_topic = topic_project_clause(db, topic) if topic is not None else true()
+    on_topic = institution_on_topic(db, topic, institution_id) if topic is not None else true()
 
     # One row per project even if the institution is listed twice on it.
     mine = (

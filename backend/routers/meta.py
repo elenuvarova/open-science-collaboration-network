@@ -26,7 +26,7 @@ from models import (
 )
 from ratelimit import limiter
 from schemas import BenchmarkOut, MetaOut
-from topic_match import topic_project_clause
+from topic_match import on_topic_project_ids, topic_project_clause
 from params import TopicId
 
 router = APIRouter(prefix="/api", tags=["meta"])
@@ -132,14 +132,15 @@ def _benchmark(topic: int, db: Session):
 
 
 def warm_benchmarks() -> None:
-    """Build every topic's benchmark once in the background so the first visitor
-    to Consortium Gaps doesn't wait for the (slow, keyword-heavy) query."""
+    """Build every topic's benchmark and on-topic project set once in the
+    background, so the first visitor doesn't wait for the keyword-heavy queries."""
     from db import SessionLocal
     from models import Topic
 
     try:
         with SessionLocal() as db:
             for (topic_id,) in db.query(Topic.id).all():
+                on_topic_project_ids(db, topic_id)  # profile panels (evidence, delivery)
                 _benchmark(topic_id, db)
     except Exception as exc:  # noqa: BLE001 — warm-up is best effort
         print(f"benchmark warm-up skipped: {exc}")
