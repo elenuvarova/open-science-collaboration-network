@@ -38,12 +38,16 @@
    *
    * 11 → 13 → 16 → 18 → 20 → 24 → 36 — a continuous, predictable ramp.
    */
-  --text-xs:   0.6875rem; /* 11px — caption / eyebrow only        */
-  --text-sm:   0.8125rem; /* 13px — secondary / nav / meta        */
-  --text-base: 1rem;      /* 16px — primary body, list names      */
-  --text-lg:   1.125rem;  /* 18px — card / section subheadings    */
-  --text-xl:   1.25rem;   /* 20px — institution name, hover name  */
-  --text-2xl:  1.5rem;    /* 24px — headings, verdicts            */
+  /* Type ramp, raised one step on 2026-10-03: two thirds of the text sat at 11
+     and 13 px, sizes for text nobody is meant to read. 13 px is now the floor
+     (captions, eyebrows, meta), 15 the working size of the interface (nav,
+     buttons, secondary lines), 17 the body. Each step is ~1.15× the last. */
+  --text-xs:   0.8125rem; /* 13px — caption / eyebrow / meta (the floor)  */
+  --text-sm:   0.9375rem; /* 15px — secondary / nav / buttons / meta rows */
+  --text-base: 1.0625rem; /* 17px — primary body, list names             */
+  --text-lg:   1.25rem;   /* 20px — card / section subheadings           */
+  --text-xl:   1.4375rem; /* 23px — institution name, hover name         */
+  --text-2xl:  1.75rem;   /* 28px — headings, verdicts                   */
   --text-3xl:  2.25rem;   /* 36px — display stat numbers          */
 
   /* Font weights */
@@ -97,6 +101,10 @@
   /* Micro-interactions: ui = a state change (tick, toast, tray), move = something
      travelling (tab pill, card settling). No overshoot anywhere: this is a tool
      people trust with a grant, not a toy. --ease-draw is for one-off reveals. */
+  /* Control heights: every select, field and toolbar button is one of these. */
+  --control-h:    40px;
+  --control-h-sm: 34px;
+
   --dur-ui:   200ms;
   --dur-move: 250ms;
   --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
@@ -191,7 +199,9 @@ body {
 
 /* Form controls don't inherit the page font by default — without this the nav
    buttons and selects fell back to the system font (Arial). */
-button, input, select, textarea { font-family: inherit; }
+/* Controls inherit the whole font, not only the family: browsers otherwise give
+   buttons 13.33 px, below the ramp's floor. Classes set their own size on top. */
+button, input, select, textarea { font: inherit; }
 
 /* Long unbreakable strings (DOIs, URLs, tokens) must never force horizontal scroll. */
 body, p, .card, .muted, .inst-meta, td, li { overflow-wrap: anywhere; }
@@ -329,6 +339,10 @@ a:hover { color: var(--accent-h); }
   cursor: pointer;
   max-width: 180px;
 }
+.topbar-topic-label {
+  font-size: var(--text-xs); color: var(--text-3); font-weight: var(--w-medium);
+  text-transform: uppercase; letter-spacing: var(--track-caption); white-space: nowrap;
+}
 .topic-select:focus { border-color: var(--accent); }
 .topic-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -358,7 +372,11 @@ a:hover { color: var(--accent-h); }
 
 @media (max-width: 560px) {
   .topbar-title { font-size: var(--text-sm); }
-  .topic-select { max-width: 150px; }
+  /* Phone: the select names itself; its label gives up the room so the topic
+     reads in full ("Climate adaptati" was cut mid-word — a native select can't
+     ellipsize). The label stays for screen readers. */
+  .topbar-topic-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .topic-select { max-width: 220px; }
 }
 
 /* Touch devices: enforce ≥44px tap targets (WCAG 2.5.8) without changing
@@ -407,7 +425,8 @@ a:hover { color: var(--accent-h); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
+  gap: 0.5em;            /* ink-to-ink ≈ 0.75 × cap height beside an icon */
+  min-height: var(--control-h-sm);
   font: inherit;
   font-size: var(--text-sm);
   font-weight: var(--w-semibold);
@@ -431,9 +450,11 @@ a:hover { color: var(--accent-h); }
 .btn-ghost { background: none; color: var(--text-2); }
 .btn-ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text-1); }
 
-.btn-sm { font-size: var(--text-xs); padding: var(--sp-1) var(--sp-3); }
+.btn-sm { font-size: var(--text-xs); padding: var(--sp-1) var(--sp-3); min-height: 28px; }
+/* In a toolbar every control shares one height: the selects set it. */
+.filter-bar .btn, .compare-tray .btn { min-height: var(--control-h); }
 
-@media (hover: none) { .btn { min-height: 40px; } }
+@media (hover: none) { .btn { min-height: var(--control-h); } }
 
 /* ═══════════════════════════════════════════════════════
    Type badge — one colour per institution type (A1)
@@ -471,6 +492,11 @@ a:hover { color: var(--accent-h); }
   transition: background var(--transition), border-color var(--transition);
 }
 .card + .card { margin-top: var(--sp-3); }
+/* …but not where cards sit side by side in a flex/grid row with its own gap:
+   there the margin pushed every second card down (the tablet network sidebar
+   showed two cards ~20 px apart at the top). */
+:is(.graph-sidebar, .gap-panels, .pipeline-board, .calls-list, .delivery-grid, .compare-grid) > .card + .card,
+:is(.graph-sidebar, .gap-panels) > * + .card { margin-top: 0; }
 
 /* ═══════════════════════════════════════════════════════
    Filter bar
@@ -488,7 +514,8 @@ a:hover { color: var(--accent-h); }
   border: 1px solid var(--border);
   color: var(--text-1);
   border-radius: var(--r-sm);
-  padding: var(--sp-2) var(--sp-3);
+  padding: 0 var(--sp-3);
+  min-height: var(--control-h);
   font-size: var(--text-sm);
   outline: none;
   cursor: pointer;
@@ -499,7 +526,7 @@ a:hover { color: var(--accent-h); }
 
 @media (max-width: 640px) {
   .filter-bar { gap: var(--sp-2); }
-  .filter-select { font-size: var(--text-xs); padding: var(--sp-1) var(--sp-2); }
+  .filter-select { padding: 0 var(--sp-2); }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -698,7 +725,9 @@ a:hover { color: var(--accent-h); }
 
 .graph-canvas {
   flex: 1;
-  height: clamp(280px, 62dvh, 760px);
+  /* Most of the window below the header: at 62dvh a wide, short canvas squashed
+     the graph into a strip. */
+  height: clamp(360px, calc(100dvh - 140px), 900px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
@@ -797,12 +826,15 @@ a:hover { color: var(--accent-h); }
 .gap-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--sp-3); margin-top: var(--sp-5); align-items: start; }
 .gap-panels .card + .card { margin-top: 0; }
 .gap-panel h3.eyebrow { margin: 0 0 var(--sp-3); }
-.gap-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+/* Every panel opens with the same head row, so side-by-side panels start their
+   eyebrows on one line (the verdict beside one eyebrow used to push it 8 px down). */
+.gap-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; min-height: 2rem; margin-bottom: var(--sp-3); }
+.gap-panel-head h3.eyebrow { margin: 0; }
 .gap-panel-head h3.eyebrow { margin: 0; }
 .gap-verdict { display: inline-flex; align-items: center; gap: var(--sp-1); font-weight: var(--w-semibold); }
 .check-list { list-style: none; display: grid; gap: var(--sp-2); }
 .check-list li { display: grid; grid-template-columns: 16px 1fr; column-gap: var(--sp-2); align-items: start; font-size: var(--text-sm); }
-.check-list li > svg { margin-top: 2px; }
+.check-list li > svg { margin-top: calc((1lh - 16px) / 2); }  /* centred on the first line */
 .check-list li.is-ok > svg { color: var(--green); }
 .check-list li.is-missing > svg { color: var(--red); }
 .check-detail { grid-column: 2; font-size: var(--text-xs); }
@@ -909,7 +941,10 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   cursor: pointer;
   font-size: var(--text-sm);
   font-weight: var(--w-medium);
-  padding: 0 0 var(--sp-4) 0;
+  gap: 0.5em;
+  padding: 0;
+  min-height: var(--control-h-sm);
+  margin-bottom: var(--sp-3);   /* was padding-bottom: the hit area hung below the label */
   transition: color var(--transition);
 }
 .back-btn:hover { color: var(--accent-h); }
@@ -1009,6 +1044,9 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 
 /* ── Consortium add/remove toggle ── (the +/✓ button on a shortlist row) */
 .consortium-toggle {
+  /* Centre the glyph on the circle: as an inline svg it sat on the text baseline,
+     ~2 px below the middle. */
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
   margin-left: var(--sp-2);
   width: 30px;
   height: 30px;
@@ -1165,7 +1203,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .method-table th, .method-table td { text-align: left; vertical-align: top; padding: var(--sp-3); border-bottom: 1px solid var(--border-sub); }
 .method-table thead th { font-size: var(--text-xs); color: var(--text-3); text-transform: uppercase; letter-spacing: var(--track-caption); }
 .method-table tbody th { font-weight: var(--w-semibold); white-space: nowrap; }
-.method-table td:nth-child(2) { font-family: var(--font-display); font-variation-settings: var(--display-axes); font-size: 18px; }
+.method-table td:nth-child(2) { font-family: var(--font-display); font-variation-settings: var(--display-axes); font-size: var(--text-lg); }
 @media (max-width: 640px) { .method-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Shortlist: custom weights + widening marker */
@@ -1177,7 +1215,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .weight-label { grid-column: 1 / -1; color: var(--text-2); }
 .weight input[type="range"] { width: 100%; accent-color: var(--text-1); min-height: 24px; }
 .weight input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.weight-value { font-family: var(--font-display); font-variation-settings: var(--display-axes); font-size: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+.weight-value { font-family: var(--font-display); font-variation-settings: var(--display-axes); font-size: var(--text-lg); text-align: right; font-variant-numeric: tabular-nums; }
 .widening-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mark); border: 1px solid var(--text-1); margin-left: 4px; vertical-align: 1px; }
 .filter-bar .data-stamp { margin-left: auto; }
 .data-stamp a, .gap-note a, .method a { text-decoration: underline; text-underline-offset: 2px; }
@@ -1329,7 +1367,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .compare-val { font-variant-numeric: tabular-nums; font-size: var(--text-base); }
 .compare-val strong { font-weight: var(--w-bold); }
 .compare-max { font-size: var(--text-xs); color: var(--text-3); }
-.compare-best-icon { margin-left: var(--sp-1); vertical-align: -1px; color: var(--green); }
+.compare-best-icon { margin-left: var(--sp-1); color: var(--green); }
 .compare-bar { height: var(--bar-h); margin-top: var(--sp-1); background: var(--border); border-radius: var(--r-full); overflow: hidden; }
 .compare-bar > div { height: 100%; background: var(--accent); border-radius: var(--r-full); }
 .compare-widening { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--text-2); }
@@ -1487,4 +1525,43 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
     transition: block-size var(--dur-move) var(--ease-out), content-visibility var(--dur-move) allow-discrete;
   }
   .compare-same[open]::details-content, .score-help[open]::details-content { block-size: auto; }
+}
+
+/* Network sidebar copy: readable size, not the caption floor. */
+.graph-meta { font-size: var(--text-sm); color: var(--text-2); line-height: var(--leading-normal); margin: 0; }
+
+/* Icon optics, measured against the label's cap band (TextMetrics, not boxes).
+   Inline, vertical-align: middle sits an icon at baseline − x-height/2, ~0.11em
+   below the cap band in Outfit: lift it. In a flex or grid row the icon is
+   centred on the line box, which in Outfit already lands within 0.1 px of the cap
+   band: no shift. Solo icons are centred on their own box. `translate` composes
+   with the rotate() a chevron uses. */
+.icon { translate: 0 var(--icon-shift, -0.11em); }
+:is(button, .btn, .lp-btn, .back-btn, summary, .notice, .gap-verdict, .check-list li,
+    .deadline-banner, .calls-notice, .type-badge, .icon-btn, .consortium-toggle,
+    .graph-zoom-btn, .check-box, .lp-step-icon) { --icon-shift: 0; }
+
+/* A row of ghost buttons that starts a card's line: pull it out by the button's
+   own padding so the label, not the invisible pill, lines up with the card text. */
+.ghost-actions { margin-left: calc(-1 * var(--sp-3)); display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+
+/* Touch: fields at 16 px, or iOS zooms the page in when one is focused. */
+@media (hover: none) {
+  .filter-select, input, select, textarea { font-size: max(16px, 1em); }
+}
+
+.nowrap { white-space: nowrap; }
+
+/* Profile stats: three across at any width, labels wrap under their numbers. */
+.profile-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 30%), max-content)); column-gap: var(--sp-6); row-gap: var(--sp-4); margin-bottom: var(--sp-5); align-items: start; }
+
+/* Breakdown values keep one width, so every bar track ends on the same line. */
+.breakdown-val { width: 4.75em; flex-shrink: 0; }
+
+/* Phone rows: names may take two lines instead of an early ellipsis, and the
+   "·" separators drop out where the meta line wraps (a dot never ends a line). */
+@media (max-width: 640px) {
+  .inst-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .inst-meta .meta-sep { display: none; }
+  .inst-meta { column-gap: var(--sp-3); }
 }

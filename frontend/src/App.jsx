@@ -265,8 +265,11 @@ export default function App() {
   const navRef = useRef(null);
   useSlidingIndicator(navRef, page);
   useEffect(() => {
-    navRef.current?.querySelector('[data-active="true"]')
+    const show = () => navRef.current?.querySelector('[data-active="true"]')
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    show();
+    // Tab widths change once the web font arrives; bring the active tab back in view.
+    document.fonts?.ready.then(show);
   }, [page]);
 
   // The map and the pipeline board want the full width (six columns).
@@ -306,11 +309,7 @@ export default function App() {
         <div className="topbar-actions">
           {topics.length > 0 && (
             <label style={{ display: "inline-flex", alignItems: "center", gap: "var(--sp-2)" }}>
-              <span style={{
-                fontSize: "var(--text-xs)", color: "var(--text-3)",
-                fontWeight: "var(--w-medium)", textTransform: "uppercase",
-                letterSpacing: "var(--track-caption)", whiteSpace: "nowrap",
-              }}>Topic</span>
+              <span className="topbar-topic-label">Topic</span>
               <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                 <select
                   className="topic-select"

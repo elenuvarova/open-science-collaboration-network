@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CytoscapeComponent from "react-cytoscapejs";
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
@@ -10,10 +10,47 @@ import { nodeColor } from "./communityColors";
 cytoscape.use(fcose);
 cytoscape.use(cola);
 
-export default function GraphCanvas({ nodes, edges, onNodeClick }) {
+// What the canvas actually draws: the strongest links (so the layout isn't a
+// hairball) and only institutions with at least one of them. Unlinked nodes used
+// to sit in a column of their own and stretched the fit until every label was
+// ~5 px; NetworkMap reports how many are left out.
+export const MAX_EDGES = 280;
+const LABELLED = 18;
+export function visibleGraph(nodes, edges) {
+  const topEdges = [...edges].sort((a, b) => b.weight - a.weight).slice(0, MAX_EDGES);
+  const linked = new Set();
+  for (const e of topEdges) { linked.add(e.source); linked.add(e.target); }
+  const shown = nodes.filter((n) => linked.has(n.id));
+  return { nodes: shown, edges: topEdges, hidden: nodes.length - shown.length };
+}
+
+export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeClick }) {
+  const { nodes, edges: topEdges } = useMemo(() => visibleGraph(allNodes, allEdges), [allNodes, allEdges]);
   const cyRef = useRef(null);
   const containerRef = useRef(null);
   const [ready, setReady] = useState(false);
+  // On a phone-width canvas fewer, larger labels: the fit zoom there is ~0.5.
+  const narrow = typeof window !== "undefined" && window.innerWidth < 640;
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+
+  // Fit the graph into the canvas minus an open legend, so the legend never sits
+  // on top of nodes (cy.fit only knows a uniform padding).
+  const fitGraph = useCallback(() => {
+    const cy = cyRef.current;
+    if (!cy || !cy.elements().length) return;
+    const pad = 28;
+    const legend = containerRef.current?.querySelector(".graph-legend");
+    const lw = legend && legend.dataset.open === "true" && cy.width() > 640 ? legend.offsetWidth + 12 : 0;
+    const bb = cy.elements().boundingBox();
+    const availW = cy.width() - lw - pad * 2;
+    const availH = cy.height() - pad * 2;
+    if (availW <= 0 || availH <= 0 || !bb.w || !bb.h) return;
+    const z = Math.min(availW / bb.w, availH / bb.h, cy.maxZoom());
+    cy.viewport({
+      zoom: z,
+      pan: { x: lw + pad + (availW - bb.w * z) / 2 - bb.x1 * z, y: pad + (availH - bb.h * z) / 2 - bb.y1 * z },
+    });
+  }, []);
 
   // Resolve design tokens from CSS variables (cytoscape can't read var()).
   const css = getComputedStyle(document.documentElement);
@@ -36,12 +73,15 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     }])
   ).values()].slice(0, 8);
 
-  // Limit to strongest edges so the layout isn't pulled into a hairball
-  const topEdges = [...edges].sort((a, b) => b.weight - a.weight).slice(0, 280);
+
+  // Permanent labels only for the most central institutions; the rest show theirs
+  // on hover or selection. Labelling all of them made the names collide.
+  const rankOf = new Map([...nodes].sort((a, b) => (b.centrality ?? 0) - (a.centrality ?? 0)).map((n, i) => [n.id, i]));
 
   const elements = [
     ...nodes.map((n) => ({
       data: {
+        rank: rankOf.get(n.id),
         id: String(n.id),
         label: n.label,
         type: n.type,
@@ -72,10 +112,14 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         "background-color": "data(color)",
         "background-opacity": 0.88,
         color: textColor,
-        "font-size": 8,
+        // Readable labels: 12 px at 1:1. When the view is zoomed out so far that
+        // a label would render under 10 px it is hidden instead (zoom in to see
+        // it): a smudge of 5 px text helps nobody.
+        "font-size": narrow ? 20 : 12,
+        "font-family": "Outfit, system-ui, sans-serif",
         "text-valign": "bottom",
-        "text-margin-y": 4,
-        "text-max-width": 90,
+        "text-margin-y": 5,
+        "text-max-width": narrow ? 280 : 150,
         "text-wrap": "ellipsis",
         "border-width": 1.5,
         "border-color": textColor,
@@ -87,20 +131,25 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
         // Node hover/select feedback — cytoscape parses this string itself and
         // can't read CSS var(), so it mirrors --dur (150ms) by hand.
         "transition-duration": "150ms",
-        "min-zoomed-font-size": 6,
+        // Cytoscape compares this against the size in device pixels.
+        "min-zoomed-font-size": 10 * dpr,
       },
     },
     {
-      selector: "node[size < 20]",
+      // Beyond the top LABELLED, labels appear on hover/selection (and in the
+      // screen-reader list); showing every one at once only makes them collide.
+      selector: `node[rank >= ${narrow ? 12 : LABELLED}]`,
       style: { label: "" },
     },
     {
       selector: "node:selected",
       style: {
+        label: "data(label)",
         "border-width": 3,
         "border-color": textColor,
         "background-opacity": 1,
-        "font-size": 10,
+        "font-size": 14,
+        "min-zoomed-font-size": 0,
       },
     },
     {
@@ -137,10 +186,13 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     {
       selector: "node.hovered",
       style: {
+        label: "data(label)",
         "background-opacity": 1,
         "border-width": 2,
         "border-color": textColor,
-        "font-size": 10,
+        "font-size": 14,
+        "min-zoomed-font-size": 0,
+        "z-index": 10,
         opacity: 1,
       },
     },
@@ -174,8 +226,8 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       randomize: true,
       avoidOverlap: true,
       handleDisconnected: true,
-      nodeSpacing: 14,
-      edgeLength: 150,
+      nodeSpacing: 22,   // room for a label under each bead
+      edgeLength: 110,   // tighter than before so the fit isn't zoomed out to nothing
     });
     sim.run();
     // The live simulation keeps spreading nodes for a few seconds, so one early
@@ -185,10 +237,10 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
     const markMoved = () => { userMoved = true; };
     cy.on("tapstart scrollzoom", markMoved);
     const fits = [700, 1600, 3000, 5000].map((ms) =>
-      setTimeout(() => { if (!userMoved) cyRef.current?.fit(undefined, 30); }, ms)
+      setTimeout(() => { if (!userMoved) fitGraph(); }, ms)
     );
     return () => { fits.forEach(clearTimeout); cy.off("tapstart scrollzoom", markMoved); sim.stop(); };
-  }, [ready, nodes, edges]);
+  }, [ready, nodes, topEdges, fitGraph]);
 
   // Interaction: tap to select, hover to highlight neighbours. Registered once
   // (no removeAllListeners — that would also strip cola's drag listeners).
@@ -229,11 +281,11 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
       if (width < 1 || height < 1) return;
       cy.resize();
       clearTimeout(fitT);
-      fitT = setTimeout(() => cyRef.current?.fit(undefined, 30), 120);
+      fitT = setTimeout(fitGraph, 120);
     });
     ro.observe(el);
     return () => { clearTimeout(fitT); ro.disconnect(); };
-  }, [ready]);
+  }, [ready, fitGraph]);
 
   if (!nodes.length) {
     return (
@@ -286,8 +338,8 @@ export default function GraphCanvas({ nodes, edges, onNodeClick }) {
           <li>{nodes.length - SR_CAP} more institutions not listed.</li>
         )}
       </ul>
-      <GraphLegend communities={communities} />
-      <GraphControls cyRef={cyRef} />
+      <GraphLegend communities={communities} onToggle={() => setTimeout(fitGraph, 0)} />
+      <GraphControls cyRef={cyRef} onFit={fitGraph} />
     </div>
   );
 }

@@ -68,7 +68,7 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
         </div>
 
         {/* Stats */}
-        <div style={{ display: "flex", gap: "var(--sp-6)", marginBottom: "var(--sp-5)", flexWrap: "wrap" }}>
+        <div className="profile-stats">
           <Stat value={inst.recent_works} label="publications 2020–25" />
           <Stat value={inst.eu_projects}  label="EU projects" />
           {inst.community_id != null && <Stat value={`#${inst.community_id}`} label="cluster" />}

@@ -133,3 +133,8 @@ a.btn.btn-secondary:hover { color: var(--text-1); }
 .deadline-banner-meta { font-variant-numeric: tabular-nums; }
 .deadline-banner a { color: inherit; text-decoration: underline; }
 .deadline-banner .btn { color: inherit; }
+
+/* Phone: the call's two actions stack at one width. */
+@media (max-width: 480px) {
+  .call-actions { flex-direction: column; align-items: stretch; }
+}

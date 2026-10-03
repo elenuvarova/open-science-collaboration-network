@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getGraph } from "../api";
-import GraphCanvas from "../components/GraphCanvas";
+import GraphCanvas, { MAX_EDGES, visibleGraph } from "../components/GraphCanvas";
 import InstitutionProfile from "./InstitutionProfile";
 import EmptyState from "../components/EmptyState";
 
@@ -12,6 +12,7 @@ export default function NetworkMap({ topicId }) {
   const [limit, setLimit] = useState(80);
   const [type, setType] = useState("");
   const [selected, setSelected] = useState(null);
+  const shown = useMemo(() => visibleGraph(graph.nodes, graph.edges), [graph]);
 
   useEffect(() => {
     if (!topicId) return;
@@ -68,8 +69,13 @@ export default function NetworkMap({ topicId }) {
               <option value="healthcare">Healthcare</option>
             </select>
           </div>
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)" }}>
-            {graph.nodes.length} nodes · {graph.edges.length} edges
+          <p className="graph-meta">
+            {shown.nodes.length} linked institutions shown
+            {shown.hidden > 0 && <> · {shown.hidden} without a link in this view hidden</>}
+            <br />
+            {graph.edges.length > MAX_EDGES
+              ? `The ${MAX_EDGES} strongest of ${graph.edges.length.toLocaleString("en-GB")} links`
+              : `${graph.edges.length} links`}
           </p>
         </div>
 
@@ -77,8 +83,9 @@ export default function NetworkMap({ topicId }) {
           ? <InstitutionProfile id={selected} topicId={topicId} onBack={() => setSelected(null)} />
           : (
             <div className="card">
-              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: "var(--leading-relaxed)" }}>
-                Click a node to see the institution profile and Partner Fit Score breakdown. Use +/− or pinch to zoom.
+              <p className="graph-meta">
+                Click a node to see the institution profile and Partner Fit Score breakdown. Zoom in with +/− or a pinch to
+                read the smaller labels.
               </p>
             </div>
           )

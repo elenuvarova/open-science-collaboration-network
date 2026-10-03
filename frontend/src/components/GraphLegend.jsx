@@ -1,20 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { COMMUNITY_COLORS } from "./communityColors";
 import Icon from "./Icon";
 
-export default function GraphLegend({ communities = [] }) {
+export default function GraphLegend({ communities = [], onToggle }) {
   // Collapsed by default on small screens where the legend would otherwise cover
   // too much of the canvas; open by default on desktop.
+  // Collapsed by default below desktop width, where the open legend sat on top of
+  // the graph's lower-left nodes; open on desktop.
   const [open, setOpen] = useState(
-    () => !(typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches)
+    () => !(typeof window !== "undefined" && window.matchMedia("(max-width: 1100px)").matches)
   );
 
   const items = communities.length
     ? communities.slice(0, 8)
     : COMMUNITY_COLORS.slice(0, 5).map((c, i) => ({ id: i, color: c, label: `Cluster ${i + 1}` }));
 
+  // The canvas fits the graph into the area right of an open legend.
+  useEffect(() => { onToggle?.(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div style={{
+    <div className="graph-legend" data-open={open} style={{
       position: "absolute", bottom: "var(--sp-3)", left: "var(--sp-3)",
       background: "var(--surface)", border: "1px solid var(--border)",
       borderRadius: "var(--r-md)", padding: "var(--sp-3)",
@@ -35,7 +40,7 @@ export default function GraphLegend({ communities = [] }) {
       </button>
 
       {open && (
-        <div tabIndex={0} role="region" aria-label="Cluster colours" style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)", maxHeight: 180, overflow: "auto", marginTop: 2 }}>
+        <div tabIndex={0} role="region" aria-label="Cluster colours" style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)", maxHeight: "min(300px, 45vh)", overflow: "auto", marginTop: 2 }}>
           {items.map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.color || COMMUNITY_COLORS[i % COMMUNITY_COLORS.length], border: "1px solid var(--text-1)", flexShrink: 0 }} />

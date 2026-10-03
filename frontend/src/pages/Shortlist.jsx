@@ -208,7 +208,7 @@ function CompareTray({ compare, onClear, onOpen }) {
         </p>
       </div>
       <div className="compare-tray-actions">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClear}>Clear</button>
+        <button type="button" className="btn btn-ghost" onClick={onClear}>Clear</button>
         <button type="button" className="btn btn-primary" onClick={onOpen} aria-label={`Compare (${compare.length})`}>
           {/* One inline run: .btn is a flex row with a gap between its children. */}
           <span>Compare (<RollingNumber value={compare.length} />)</span>
@@ -332,7 +332,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
             </button>
           </div>
           {(onGoToGaps || onGoToPipeline) && (
-            <div style={{ marginTop: "var(--sp-2)" }}>
+            <div className="ghost-actions" style={{ marginTop: "var(--sp-2)" }}>
               {onGoToGaps && (
                 <button className="btn btn-ghost btn-sm" onClick={onGoToGaps}>
                   → Check role coverage
@@ -467,9 +467,9 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
               <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: "var(--sp-1)" }}>
                 <TypeBadge type={inst.type} />
                 <span title={countryName(inst.country)}>{inst.country}{isWidening(inst.country) && <><span className="widening-dot" title="Widening country" aria-hidden="true" /><span className="sr-only"> (widening country)</span></>}</span>
-                <span>·</span>
+                <span className="meta-sep" aria-hidden="true">·</span>
                 <span>{fmt(inst.recent_works)} works</span>
-                {inst.eu_projects > 0 && <><span>·</span><span>{inst.eu_projects} EU projects</span></>}
+                {inst.eu_projects > 0 && <><span className="meta-sep" aria-hidden="true">·</span><span>{inst.eu_projects} EU projects</span></>}
               </div>
             </div>
             <span className={`score-pill ${scoreClass(shown(inst))}`}>
