@@ -1,6 +1,6 @@
 pyalex==0.18
 requests==2.33.1
-pandas==2.2.3
+pandas==3.0.6
 networkx==3.4.2
 python-louvain==0.16
 rapidfuzz==3.10.1
