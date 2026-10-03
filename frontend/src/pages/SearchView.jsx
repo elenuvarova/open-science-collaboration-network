@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { searchWorks } from "../api";
 import { track } from "../analytics";
 
+// OpenAlex stores DOIs as full URLs ("https://doi.org/10.…"); bare ones get the prefix.
+// Always a doi.org link, whatever the field holds.
+const doiUrl = (doi) => `https://doi.org/${String(doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}`;
+
 function SimilarityBar({ value }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
@@ -146,7 +150,7 @@ export default function SearchView({ topicId }) {
                 marginBottom: "var(--sp-1)",
               }}>
                 {r.doi
-                  ? <a className="result-link" href={`https://doi.org/${r.doi}`} target="_blank" rel="noreferrer">
+                  ? <a className="result-link" href={doiUrl(r.doi)} target="_blank" rel="noreferrer">
                       {r.title}
                     </a>
                   : r.title}

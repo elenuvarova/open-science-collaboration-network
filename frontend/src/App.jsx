@@ -76,7 +76,14 @@ export default function App() {
     const h = parseHash();
     return (h.page ?? "shortlist") === "shortlist" ? (h.instId ?? null) : null;
   });
-  const [showTour, setShowTour] = useState(() => !localStorage.getItem("tour_done"));
+  // The first-visit tour opens by itself only on a plain visit. Someone arriving on a
+  // link to a profile, a shared consortium or a comparison came for that, so the tour
+  // waits (the ? button still opens it, and it shows on their next plain visit).
+  const [showTour, setShowTour] = useState(() => {
+    if (localStorage.getItem("tour_done")) return false;
+    const h = parseHash();
+    return !(h.instId || h.shared?.length || h.ids?.length);
+  });
 
   // Per-view heading. On page change we move focus here so keyboard / screen-reader
   // users are taken to the new view and hear its name (WCAG 2.4.3 / 2.4.6).
@@ -90,6 +97,8 @@ export default function App() {
   // something within the topic it was matched on) and persisted to localStorage
   // so it survives a page refresh — it's the user's only work product.
   const [consortiumByTopic, setConsortiumByTopic] = useState(loadConsortia);
+  const consortiaRef = useRef(consortiumByTopic);
+  consortiaRef.current = consortiumByTopic;
   const consortium = (topicId != null && consortiumByTopic[topicId]) || [];
 
   useEffect(() => {
@@ -122,16 +131,14 @@ export default function App() {
       .then((rows) => {
         const found = rows.filter(Boolean);
         if (!found.length) return;
-        // Replacing the user's own consortium is reversible: the notice offers Undo.
-        let previous = [];
-        setConsortiumByTopic((prev) => {
-          previous = prev[topicId] || [];
-          return { ...prev, [topicId]: found };
-        });
-        setSharedUndo(() => () => {
+        // Replacing the user's own consortium is reversible: the notice offers Undo,
+        // but only when there was one to restore.
+        const previous = consortiaRef.current[topicId] || [];
+        setConsortiumByTopic((prev) => ({ ...prev, [topicId]: found }));
+        setSharedUndo(previous.length ? () => () => {
           setConsortiumByTopic((prev) => ({ ...prev, [topicId]: previous }));
           setSharedNotice(null);
-        });
+        } : null);
         setSharedNotice(`Loaded a shared consortium of ${found.length} ${found.length === 1 ? "partner" : "partners"}.`);
         track("consortium_opened_shared", { topic: topicId, size: found.length });
       });

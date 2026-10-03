@@ -40,7 +40,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-**Seed some demo data** (until the full ETL lands), in another shell:
+**Seed some demo data** in another shell (the full ETL, `python run.py`, takes hours and needs network access):
 
 ```bash
 cd etl
@@ -68,7 +68,10 @@ GitHub Actions cron.
 2. **Set env vars** on the container:
    - `DATABASE_URL` — Postgres connection string (no SSL needed for an
      internal/co-located DB; SSL is only used if the URL itself asks for it).
-   - `OPENALEX_API_KEY`, `GROQ_API_KEY` — used by the ETL.
+   - `OPENALEX_API_KEY` — used by the ETL.
+   - `GROQ_API_KEY`, `GEMINI_API_KEY` — the AI strategy brief: Groq first, Gemini as the
+     fallback (`GROQ_MODEL` / `GEMINI_MODEL` pin a model; otherwise one is picked from
+     the provider's current list). Runtime variables only, never build-time.
    - `ENABLE_SCHEDULER=1` — turns on the in-process ETL scheduler.
 3. **Populate:** on first boot with an empty DB, the scheduler runs the ETL once
    to populate, then re-runs it **weekly (Mondays 04:00 UTC)** in a background
@@ -76,11 +79,30 @@ GitHub Actions cron.
 
 ## Endpoints
 
+All read-only, rate-limited per IP. The OpenAPI schema is at `/openapi.json`
+(the interactive `/docs` page is off in production).
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/health` | DB connectivity → `{ status, db }` |
-| GET | `/api/topics` | Seeded research topics |
-| GET | `/api/institutions` | Ranked partner shortlist (filters: topic, country, type, min_score) |
+| GET | `/api/meta` | Data date and table counts |
+| GET | `/api/topics` | The six research topics |
+| GET | `/api/institutions` | Ranked partner shortlist (filters: `topic`, `country`, `countries`, `type`, `min_score`) |
 | GET | `/api/institutions/{id}` | Institution profile + Partner Fit Score breakdown |
-| GET | `/api/graph` | Nodes + edges for the collaboration network |
-| GET | `/api/calls?topic=` | Open + forthcoming Horizon Europe calls matched to a topic, nearest deadline first. Read from the EU Funding & Tenders portal, cached 12 h; `stale: true` when the portal is unreachable. Tests: `pip install -r backend/requirements-dev.txt && pytest backend/tests` |
+| GET | `/api/institutions/{id}/evidence` | EU projects strictly on the topic, totals, and the closest co-partners |
+| GET | `/api/institutions/{id}/delivery` | Deliverables and publications CORDIS lists for those projects |
+| GET | `/api/graph` | Nodes + edges for the collaboration network (`limit` ≤ 200) |
+| GET | `/api/suggest?topic=&ids=` | Partners outside a consortium who already work with it |
+| GET | `/api/consortium/ties?topic=&ids=` | Who in a consortium already works together (≤ 20 ids) |
+| GET | `/api/benchmark?topic=` | Size and make-up of funded multi-country consortia on the topic |
+| GET | `/api/calls?topic=` | Open + forthcoming Horizon Europe calls matched to a topic, nearest deadline first. Read from the EU Funding & Tenders portal, cached 12 h; `stale: true` when the portal is unreachable |
+| GET | `/api/brief?topic=` | The AI strategy brief, regenerated weekly |
+| GET | `/api/search?q=&topic=` | Semantic search over the topic's works (embeddings) |
+
+## Tests
+
+```bash
+pip install -r backend/requirements-dev.txt -r etl/requirements.txt
+cd backend && pytest tests        # API
+cd .. && pytest etl/tests         # ETL: ROR outages, participation sweep
+```
