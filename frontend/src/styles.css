@@ -563,6 +563,9 @@ a:hover { color: var(--accent-h); }
 }
 
 .inst-info { flex: 1; min-width: 0; }
+/* Rank on the name's first baseline (it floated between the name and the badge
+   line when centred on the row); the score and controls stay centred. */
+.inst-rank, .inst-info { align-self: first baseline; }
 
 /* Level 3 (16px) semibold — primary content, clearly above meta */
 .inst-name {

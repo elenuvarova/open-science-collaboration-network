@@ -101,7 +101,11 @@
 .lp-rows { list-style: none; background: var(--surface); border: 1px solid var(--border-sub); border-radius: 20px; padding: var(--sp-2); box-shadow: var(--shadow-lg); }
 .lp-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4); border-bottom: 1px solid var(--border-sub); }
 .lp-row:last-child { border-bottom: 0; }
-.lp-row-rank { color: var(--text-3); font-size: var(--text-sm); width: 1.2em; text-align: right; }
+/* The rank sits on the name's baseline, not floating in the middle of the
+   name + meta stack: the two share a first-baseline alignment, the score pill
+   stays centred. */
+.lp-row-rank { color: var(--text-3); font-size: var(--text-sm); width: 1.4em; text-align: right; font-variant-numeric: tabular-nums; }
+.lp-row-rank, .lp-row-main { align-self: first baseline; }
 .lp-row-main { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; flex: 1; }
 .lp-row-name { font-weight: var(--w-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-row-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); color: var(--text-2); font-size: var(--text-sm); }
