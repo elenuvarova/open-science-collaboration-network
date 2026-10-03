@@ -98,13 +98,18 @@ def _gemini_brief(prompt: str):
     last_error = None
     for model in candidates:
         for attempt in range(2):
-            r = requests.post(
-                f"{base}/models/{model}:generateContent",
-                headers=headers,
-                json={"contents": [{"parts": [{"text": prompt}]}],
-                      "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8192}},  # thinking models spend part of it
-                timeout=120,
-            )
+            try:
+                r = requests.post(
+                    f"{base}/models/{model}:generateContent",
+                    headers=headers,
+                    json={"contents": [{"parts": [{"text": prompt}]}],
+                          "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8192}},  # thinking models spend part of it
+                    timeout=120,
+                )
+            except requests.RequestException as e:      # timeout / connection reset: retry, then next model
+                last_error = f"{model}: {type(e).__name__}"
+                time.sleep(3 * (attempt + 1))
+                continue
             if r.status_code in (429, 500, 503):        # busy: wait, retry once
                 last_error = f"{model}: HTTP {r.status_code}"
                 time.sleep(3 * (attempt + 1))
@@ -112,13 +117,23 @@ def _gemini_brief(prompt: str):
             if r.status_code != 200:                     # e.g. 404 not enabled for this key
                 last_error = f"{model}: HTTP {r.status_code}"
                 break
-            parts = r.json()["candidates"][0]["content"]["parts"]
+            try:
+                cand = (r.json().get("candidates") or [{}])[0]
+            except ValueError:
+                cand = {}
+            parts = (cand.get("content") or {}).get("parts")
+            if not parts:
+                # 200 without text: thinking used the whole budget (MAX_TOKENS) or SAFETY.
+                last_error = f"{model}: no text ({cand.get('finishReason') or 'malformed reply'})"
+                break
             text = "".join(p.get("text", "") for p in parts)
             if len(text.strip()) >= 1200:
                 return text, f"gemini/{model}"
             last_error = f"{model}: short answer ({len(text)} chars)"
             break
-    raise RuntimeError(f"all Gemini models busy ({last_error})")
+    if not candidates:
+        raise RuntimeError("no Gemini model with generateContent is available for this key")
+    raise RuntimeError(f"no usable Gemini answer ({last_error})")
 
 
 def _generate_brief(prompt: str):

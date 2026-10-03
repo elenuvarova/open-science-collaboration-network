@@ -27,6 +27,7 @@ from models import (
 from ratelimit import limiter
 from schemas import BenchmarkOut, MetaOut
 from topic_match import topic_project_clause
+from params import TopicId
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -76,7 +77,7 @@ def _quantile(values: list[int], q: float) -> float:
 
 @router.get("/benchmark", response_model=BenchmarkOut)
 @limiter.limit("60/minute")
-def get_benchmark(request: Request, topic: int = Query(...), db: Session = Depends(get_db)):
+def get_benchmark(request: Request, topic: TopicId, db: Session = Depends(get_db)):
     # Unknown topics 404 before touching the cache, so a ?topic=1..N loop can't grow it.
     if db.get(Topic, topic) is None:
         raise HTTPException(status_code=404, detail="topic not found")

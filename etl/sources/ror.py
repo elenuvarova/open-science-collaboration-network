@@ -9,22 +9,45 @@ import requests
 
 _cache: dict[str, str | None] = {}
 _ROR_URL = "https://api.ror.org/v2/organizations"
+_RETRIES = 3
+
+
+class RorUnavailable(Exception):
+    """ROR could not be asked (rate limit, outage, timeout). Not the same as
+    "ROR found no match": the caller must not treat it as a rejection."""
+
+
+def _fetch(name: str) -> dict:
+    last = None
+    for attempt in range(_RETRIES):
+        try:
+            r = requests.get(_ROR_URL, params={"affiliation": name}, timeout=10)
+        except requests.RequestException as e:
+            last = type(e).__name__
+        else:
+            if r.status_code == 200:
+                return r.json()
+            last = f"HTTP {r.status_code}"
+            if r.status_code not in (429, 500, 502, 503, 504):
+                break  # a 4xx other than 429 won't change on retry
+            if r.status_code == 429:
+                try:
+                    time.sleep(min(float(r.headers.get("Retry-After", 0)), 60))
+                except ValueError:
+                    pass
+        time.sleep(2 * 2 ** attempt)  # 2 s, 4 s, 8 s
+    raise RorUnavailable(last)
 
 
 def match_to_ror(name: str, country: str | None = None) -> str | None:
-    """Return a ROR ID (e.g. 'https://ror.org/02catss52') or None."""
+    """Return a ROR ID (e.g. 'https://ror.org/02catss52') or None when ROR has
+    no confident match. Raises RorUnavailable when ROR could not answer; that
+    result is not cached, so the next org with the same name asks again."""
     key = f"{name}|{country}"
     if key in _cache:
         return _cache[key]
 
-    params = {"affiliation": name}
-    try:
-        r = requests.get(_ROR_URL, params=params, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-    except Exception:
-        _cache[key] = None
-        return None
+    data = _fetch(name)
 
     time.sleep(0.05)  # ROR asks for polite rate
 

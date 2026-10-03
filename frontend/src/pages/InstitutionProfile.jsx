@@ -53,7 +53,8 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
                   {inst.country}
                 </span>
               )}
-              {inst.ror_id && (
+              {/* ror_id is external data: only ever link to ror.org over https. */}
+              {/^https:\/\/ror\.org\//.test(inst.ror_id || "") && (
                 <a href={inst.ror_id} target="_blank" rel="noreferrer"
                    style={{ fontSize: "var(--text-xs)", color: "var(--accent)" }}>
                   ROR <Icon name="external" size={10} />

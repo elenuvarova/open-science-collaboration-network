@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import case, func, true
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from db import get_db
 from edge_split import edge_split
@@ -13,6 +13,7 @@ from models import CollaborationEdge, Institution, Project, ProjectParticipant
 from ratelimit import limiter
 from schemas import CoPartner, EvidenceOut, EvidenceProject, EvidenceTotals
 from topic_match import topic_project_clause
+from params import InstitutionId, OptTopicId
 
 router = APIRouter(prefix="/api/institutions", tags=["evidence"])
 
@@ -28,8 +29,8 @@ def _year(d) -> Optional[int]:
 @limiter.limit("60/minute")
 def get_evidence(
     request: Request,
-    institution_id: int,
-    topic: Optional[int] = Query(None),
+    institution_id: InstitutionId,
+    topic: OptTopicId = None,
     db: Session = Depends(get_db),
 ):
     if db.get(Institution, institution_id) is None:
@@ -116,6 +117,21 @@ def get_evidence(
         {i.id: i for i in db.query(Institution).filter(Institution.id.in_(top_ids)).all()}
         if top_ids else {}
     )
+    # Shared EU projects come from the participations with the same on-topic
+    # filter as the totals above, so the panel never shows "0 projects on topic"
+    # over "3 shared EU projects". The edge's project_weight uses the ETL's broad
+    # keyword filter: fine for ranking the partners, not for a number shown here.
+    shared: dict[int, int] = {}
+    if top_ids:
+        other = aliased(ProjectParticipant)
+        shared = dict(
+            db.query(other.institution_id, func.count(func.distinct(other.project_id)))
+            .join(mine, mine.c.project_id == other.project_id)
+            .join(Project, Project.id == other.project_id)
+            .filter(other.institution_id.in_(top_ids), on_topic)
+            .group_by(other.institution_id)
+            .all()
+        )
     co_partners = [
         CoPartner(
             id=i,
@@ -125,7 +141,7 @@ def get_evidence(
             edge_types=sorted(etypes[i]),
             weight=round(weight[i], 2),
             coauthor_works=round(counts[i][0]) if counts[i][2] else None,
-            shared_projects=round(counts[i][1]) if counts[i][2] else None,
+            shared_projects=shared.get(i, 0) if counts[i][2] else None,
         )
         for i in top_ids
         if i in insts

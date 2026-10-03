@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from models import Institution, InstitutionMetric
 from schemas import InstitutionScored
+from params import InstType, InstitutionId, OptTopicId
 
 router = APIRouter(prefix="/api/institutions", tags=["institutions"])
 
@@ -27,10 +28,11 @@ def _scored(inst: Institution, metric: Optional[InstitutionMetric]) -> Instituti
 
 @router.get("", response_model=list[InstitutionScored])
 def list_institutions(
-    topic: Optional[int] = None,
-    country: Optional[str] = None,
-    countries: Optional[str] = Query(None, description="Comma-separated ISO-2 codes, e.g. widening countries"),
-    type: Optional[str] = None,
+    topic: OptTopicId = None,
+    country: Optional[str] = Query(None, pattern=r"^[A-Za-z]{2}$"),
+    countries: Optional[str] = Query(None, max_length=300, pattern=r"^[A-Za-z, ]*$",
+                                     description="Comma-separated ISO-2 codes, e.g. widening countries"),
+    type: InstType = None,
     min_score: float = Query(0.0, ge=0, le=100),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -55,8 +57,8 @@ def list_institutions(
 
 @router.get("/{institution_id}", response_model=InstitutionScored)
 def get_institution(
-    institution_id: int,
-    topic: Optional[int] = None,
+    institution_id: InstitutionId,
+    topic: OptTopicId = None,
     db: Session = Depends(get_db),
 ):
     inst = db.query(Institution).get(institution_id)

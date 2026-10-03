@@ -15,6 +15,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 import bisect
 import math
 from collections import defaultdict
+from datetime import datetime, timezone
 
 import config
 import load
@@ -34,7 +35,7 @@ def _strip_nul(s: str) -> str:
     return s.replace("\x00", "") if isinstance(s, str) else s
 
 
-def run_topic(topic_cfg: dict):
+def run_topic(topic_cfg: dict, run_tag: str | None = None):
     """Run the full pipeline for one topic dict from config.TOPICS."""
     name = topic_cfg["name"]
     print(f"\n{'='*60}")
@@ -96,6 +97,7 @@ def run_topic(topic_cfg: dict):
     proj_rows: dict[str, dict] = {}                              # cordis_id → project row (deduped)
     proj_matches: list[tuple[str, list[tuple[str, str]]]] = []   # (cordis_id, [(openalex_id, role)])
     matched = unmatched = rejected_unconfirmed = 0
+    ror_asked = ror_down = 0  # 75-90 matches sent to ROR / ROR gave no answer
     try:
         for proj in fetch_projects():
             cid = proj["cordis_id"]
@@ -111,8 +113,17 @@ def run_topic(topic_cfg: dict):
                     matched += 1
                 else:
                     unmatched += 1
-                    if method == "fuzzy_review":
+                    if method in ("fuzzy_review", "fuzzy_unverified"):
                         rejected_unconfirmed += 1
+                if method in ("ror", "fuzzy_review", "fuzzy_unverified"):
+                    ror_asked += 1
+                    ror_down += method == "fuzzy_unverified"
+                    # Rejecting every org ROR couldn't check would silently drop
+                    # real participations and shift scores. When ROR looks down,
+                    # stop before phase 2 so last week's data stays in place.
+                    if ror_down >= 10 and ror_down > 0.05 * ror_asked:
+                        raise RuntimeError(f"ROR unavailable: {ror_down} of {ror_asked} lookups failed; "
+                                           f"topic '{name}' not updated")
             proj_matches.append((cid, parts))
     finally:
         cordis_mod.CLIMATE_KEYWORDS = orig_keywords  # restore even on error
@@ -164,9 +175,10 @@ def run_topic(topic_cfg: dict):
                 ids_here.append(db_id)
             if len(ids_here) > 1:
                 project_participants_db.append(ids_here)
-        load.insert_project_participants(db, participant_rows)
+        load.insert_project_participants(db, participant_rows, run_tag)
         print(f"  → {len(proj_rows)} projects, {matched} matched orgs, {unmatched} unmatched "
-              f"({rejected_unconfirmed} rejected: 75-90 name match without ROR confirmation)")
+              f"({rejected_unconfirmed} rejected: 75-90 name match without ROR confirmation, "
+              f"of them {ror_down} because ROR did not answer)")
 
         # 5. Graph metrics
         print("Step 5/8  Graph metrics…")
@@ -283,8 +295,29 @@ def main():
         topics_to_run = config.TOPICS
 
     load.init_schema()
+    # A full run stamps every participation it matches; once all topics are
+    # committed, rows it did not stamp (accepted by an older, looser rule) go.
+    # A single-topic run can't tell stale rows from other topics' rows: no sweep.
+    run_tag = None if requested else datetime.now(timezone.utc).isoformat(timespec="seconds")
+    failed = []
     for topic_cfg in topics_to_run:
-        run_topic(topic_cfg)
+        # One topic failing (e.g. ROR down) keeps its old data; the rest still update.
+        try:
+            run_topic(topic_cfg, run_tag)
+        except Exception as e:  # noqa: BLE001
+            print(f"TOPIC FAILED: {topic_cfg['name']}: {e}")
+            failed.append(topic_cfg["name"])
+    if run_tag and not failed:
+        db = load.SessionLocal()
+        try:
+            deleted, kept = load.sweep_unseen_participants(db, run_tag)
+            db.commit()
+            print(f"Participations: {kept} matched this run, {deleted} older ones removed")
+        except Exception as e:  # noqa: BLE001
+            db.rollback()
+            print(f"participation sweep skipped: {e}")
+        finally:
+            db.close()
 
     # Delivery record (CORDIS outputs per project): a final extra step that must
     # never fail the run — the topics above are already committed.
@@ -294,6 +327,11 @@ def main():
     except Exception as e:  # noqa: BLE001
         print(f"outputs: error (non-fatal): {e}")
 
+    if failed:
+        # Non-zero exit: the scheduler records the run as failed, so the
+        # "data as of" date doesn't move and no participation was swept.
+        print(f"\n{len(failed)} of {len(topics_to_run)} topic(s) failed: {', '.join(failed)}")
+        sys.exit(1)
     print(f"\nAll done — {len(topics_to_run)} topic(s) ingested.")
 
 

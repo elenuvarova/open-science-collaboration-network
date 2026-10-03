@@ -7,6 +7,7 @@ from db import get_db
 from models import CollaborationEdge, Institution, InstitutionMetric
 from ratelimit import limiter
 from schemas import GraphEdge, GraphNode, GraphOut
+from params import InstType, OptTopicId
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
@@ -15,9 +16,9 @@ router = APIRouter(prefix="/api/graph", tags=["graph"])
 @limiter.limit("60/minute")
 def get_graph(
     request: Request,
-    topic: Optional[int] = None,
-    type: Optional[str] = None,
-    limit: int = Query(300, ge=1, le=1000),
+    topic: OptTopicId = None,
+    type: InstType = None,
+    limit: int = Query(150, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
     iq = (

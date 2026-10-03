@@ -1,17 +1,18 @@
 import os
 import threading
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi import Request
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from db import Base, db_kind, engine
 from eu_calls import get_calls
-from migrate import ensure_edge_split_columns
+from migrate import ensure_columns
 from ratelimit import limiter
 from routers import brief, calls, consortium, delivery, evidence, graph, health, institutions, meta, search, suggest, topics
 from scheduler import start_scheduler
@@ -21,9 +22,29 @@ import models  # noqa: E402,F401
 
 Base.metadata.create_all(bind=engine)
 # create_all never adds columns to an existing table: add the newer ones.
-ensure_edge_split_columns(engine)
+ensure_columns(engine)
 
-app = FastAPI(title="noda")
+PRODUCTION = os.environ.get("NODE_ENV") == "production"
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    # Spawns a daemon thread (or no-ops if ENABLE_SCHEDULER != 1) and returns
+    # immediately — never blocks the port bind or the event loop. The thread
+    # populates an empty DB once, then runs the ETL weekly (Mon 04:00 UTC).
+    start_scheduler()
+    # Warm the Horizon calls cache off the request path so the first visit to the
+    # Calls page isn't the one that pays for the fetch + embedding (~20 s).
+    if os.environ.get("CALLS_WARMUP", "1") == "1":
+        threading.Thread(target=get_calls, name="calls-warmup", daemon=True).start()
+        threading.Thread(target=meta.warm_benchmarks, name="benchmark-warmup", daemon=True).start()
+    yield
+
+
+# /docs and /redoc can't load their CDN bundles under our CSP, so in production
+# they were blank pages; the OpenAPI schema stays public as the API reference.
+app = FastAPI(title="noda", lifespan=_lifespan,
+              docs_url=None if PRODUCTION else "/docs", redoc_url=None if PRODUCTION else "/redoc")
 
 # Compress JSON + the JS/CSS bundles (they were going out uncompressed).
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -42,6 +63,18 @@ _CSP = "; ".join([
     "form-action 'self'",
 ])
 
+# The app uses none of these browser features; say so, so an injected script couldn't either.
+_PERMISSIONS = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+
+
+@app.middleware("http")
+async def _reject_nul(request: Request, call_next):
+    # A NUL byte can't be stored or compared in Postgres text: it used to reach
+    # the driver and come back as a 500. Nothing legitimate sends one.
+    if "%00" in request.url.query or "\x00" in request.url.path:
+        return JSONResponse(status_code=400, content={"detail": "NUL byte in request"})
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def _headers(request: Request, call_next):
@@ -52,6 +85,9 @@ async def _headers(request: Request, call_next):
     h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     h.setdefault("X-Frame-Options", "DENY")
     h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    h.setdefault("Permissions-Policy", _PERMISSIONS)
+    h.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    h.setdefault("Cross-Origin-Resource-Policy", "same-origin")
     path = request.url.path
     if path.startswith("/assets/"):
         # Vite emits content-hashed filenames — safe to cache forever.
@@ -80,19 +116,8 @@ app.include_router(consortium.router)
 app.include_router(calls.router)
 
 
-@app.on_event("startup")
-def _start_etl_scheduler() -> None:
-    # Spawns a daemon thread (or no-ops if ENABLE_SCHEDULER != 1) and returns
-    # immediately — never blocks the port bind or the event loop. The thread
-    # populates an empty DB once, then runs the ETL weekly (Mon 04:00 UTC).
-    start_scheduler()
-    # Warm the Horizon calls cache off the request path so the first visit to the
-    # Calls page isn't the one that pays for the fetch + embedding (~20 s).
-    if os.environ.get("CALLS_WARMUP", "1") == "1":
-        threading.Thread(target=get_calls, name="calls-warmup", daemon=True).start()
-        threading.Thread(target=meta.warm_benchmarks, name="benchmark-warmup", daemon=True).start()
 
-if os.environ.get("NODE_ENV") == "production" or os.environ.get("SERVE_STATIC") == "1":
+if PRODUCTION or os.environ.get("SERVE_STATIC") == "1":
     public_dir = os.path.join(os.path.dirname(__file__), "public")
     if os.path.isdir(public_dir):
         # Mount only the /assets/ subdir — avoids app.mount("/") intercepting /api/* routes.

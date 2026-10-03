@@ -6,6 +6,7 @@ from db import get_db
 from models import Work, WorkEmbedding
 from ratelimit import limiter
 from schemas import WorkSearchResult
+from params import TopicId
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
@@ -31,8 +32,8 @@ def _get_model():
 @limiter.limit("30/minute")
 def search_works(
     request: Request,
+    topic: TopicId,
     q: str = Query(..., max_length=512),
-    topic: int = Query(...),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):

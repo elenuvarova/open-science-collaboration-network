@@ -17,6 +17,7 @@ from edge_split import edge_split
 from models import CollaborationEdge, Institution, InstitutionMetric, Topic
 from ratelimit import limiter
 from schemas import BridgeLink, TieBridge, TieMember, TiePair, TiesOut
+from params import TopicId, parse_ids
 
 router = APIRouter(prefix="/api/consortium", tags=["consortium"])
 
@@ -29,22 +30,14 @@ EDGE_TYPES = ("coauthor", "project")
 
 
 def _parse_ids(raw: str) -> list[int]:
-    try:
-        ids = sorted({int(x) for x in raw.split(",") if x.strip()})
-    except ValueError:
-        raise HTTPException(status_code=422, detail="ids must be comma-separated integers")
-    if not ids:
-        raise HTTPException(status_code=422, detail="ids must not be empty")
-    if len(ids) > MAX_IDS:
-        raise HTTPException(status_code=422, detail=f"at most {MAX_IDS} ids")
-    return ids
+    return parse_ids(raw, MAX_IDS)
 
 
 @router.get("/ties", response_model=TiesOut)
 @limiter.limit("30/minute")
 def ties(
     request: Request,
-    topic: int = Query(...),
+    topic: TopicId,
     ids: str = Query(..., description="comma-separated consortium institution ids (max 20)"),
     db: Session = Depends(get_db),
 ):

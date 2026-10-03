@@ -22,7 +22,3 @@ def health():
         logger.exception("health check failed")
         return JSONResponse(status_code=503, content={"status": "error"})
 
-
-@router.get("/api/hello")
-def hello():
-    return {"message": "Hello from the backend 👋"}

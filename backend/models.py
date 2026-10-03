@@ -101,6 +101,9 @@ class ProjectParticipant(Base):
     project_id = Column(Integer, ForeignKey("project.id"), index=True)
     institution_id = Column(Integer, ForeignKey("institution.id"), index=True)
     role = Column(String)  # coordinator | participant
+    # Tag of the last full ETL run that matched this participation. A full run
+    # deletes rows it did not see, so matches a stricter rule now rejects go away.
+    seen_run = Column(String, nullable=True)
 
 
 class CollaborationEdge(Base):

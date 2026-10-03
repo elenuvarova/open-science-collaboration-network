@@ -10,9 +10,13 @@ from sqlalchemy import inspect, text
 EDGE_SPLIT_COLUMNS = ("coauthor_weight", "project_weight")
 
 
-def _edge_columns(engine) -> set[str]:
+def _columns(engine, table: str) -> set[str]:
     # Fresh inspector each time: column lists are cached per inspector.
-    return {c["name"] for c in inspect(engine).get_columns("collaboration_edge")}
+    return {c["name"] for c in inspect(engine).get_columns(table)}
+
+
+def _edge_columns(engine) -> set[str]:
+    return _columns(engine, "collaboration_edge")
 
 
 def ensure_edge_split_columns(engine) -> list[str]:
@@ -33,3 +37,26 @@ def ensure_edge_split_columns(engine) -> list[str]:
             if col not in _edge_columns(engine):
                 raise
     return added
+
+
+def ensure_participant_seen_run(engine) -> bool:
+    """Add project_participant.seen_run (VARCHAR, NULL for old rows) if missing.
+    Returns True when it was added."""
+    if "project_participant" not in inspect(engine).get_table_names():
+        return False
+    if "seen_run" in _columns(engine, "project_participant"):
+        return False
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE project_participant ADD COLUMN seen_run VARCHAR"))
+        return True
+    except Exception:
+        if "seen_run" not in _columns(engine, "project_participant"):
+            raise
+        return False
+
+
+def ensure_columns(engine) -> None:
+    """Every column added to an existing table after it shipped."""
+    ensure_edge_split_columns(engine)
+    ensure_participant_seen_run(engine)

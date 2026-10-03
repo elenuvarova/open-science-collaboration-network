@@ -8,6 +8,7 @@ from eu_calls import MIN_SCORE, days_left, get_calls, match_score
 from models import Topic
 from ratelimit import limiter
 from schemas import CallOut, CallsOut
+from params import TopicId
 
 router = APIRouter(prefix="/api/calls", tags=["calls"])
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api/calls", tags=["calls"])
 @limiter.limit("60/minute")
 def list_calls(
     request: Request,
-    topic: int = Query(...),
+    topic: TopicId,
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
 ):

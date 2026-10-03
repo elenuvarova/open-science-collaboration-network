@@ -8,7 +8,7 @@ Strategy (PLAN.md §5):
 from rapidfuzz import fuzz
 
 from normalize import normalize_name
-from sources.ror import match_to_ror
+from sources.ror import RorUnavailable, match_to_ror
 
 HIGH = 90
 REVIEW_FLOOR = 75
@@ -18,12 +18,12 @@ def accept_match(method: str, confidence: float, accept_unconfirmed: bool) -> bo
     """Whether a best_match result counts as a participation.
 
     Methods: fuzzy_high (>=90), ror (75-90 confirmed by ROR), fuzzy_review (75-90,
-    ROR could not confirm), unmatched. fuzzy_review is accepted only when
-    accept_unconfirmed is True.
+    ROR could not confirm), fuzzy_unverified (75-90, ROR did not answer),
+    unmatched. The two unconfirmed ones count only when accept_unconfirmed is True.
     """
     if confidence < REVIEW_FLOOR or method == "unmatched":
         return False
-    if method == "fuzzy_review":
+    if method in ("fuzzy_review", "fuzzy_unverified"):
         return accept_unconfirmed
     return True
 
@@ -80,7 +80,12 @@ def best_match(
 
     # --- 2. ROR pivot, only for the uncertain band (bounded # of network calls) ---
     if best_score >= REVIEW_FLOOR:
-        ror_id = match_to_ror(cordis_name, country)
+        try:
+            ror_id = match_to_ror(cordis_name, country)
+        except RorUnavailable:
+            # ROR didn't answer: unknown, not a "no". run.py counts these and
+            # aborts the topic when ROR looks down, keeping last week's data.
+            return best_inst, best_score, "fuzzy_unverified"
         if ror_id:
             inst = by_ror.get(ror_id.rstrip("/"))
             if inst:

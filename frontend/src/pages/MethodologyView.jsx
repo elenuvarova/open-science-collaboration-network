@@ -14,10 +14,15 @@ const HOW = {
   recent_activity: "Share of the institution’s works in the sample dated 2024 or later.",
 };
 
+// ROR-confirmed matching shipped on 3 Oct 2026. The first full weekly refresh
+// after it also removes the 75–90 matches older runs accepted unconfirmed.
+const STRICT_MATCHING_FROM = "2026-10-04";
+
 export default function MethodologyView() {
   const [meta, setMeta] = useState(null);
   useEffect(() => { loadMeta().then(setMeta); }, []);
   const date = formatDate(meta?.data_as_of);
+  const strict = (meta?.data_as_of || "") >= STRICT_MATCHING_FROM;
 
   return (
     <article className="method">
@@ -50,9 +55,11 @@ export default function MethodologyView() {
         <h3 id="m-match">Matching EU projects to institutions</h3>
         <p>
           CORDIS and OpenAlex share no identifier. Names are compared within the same country by fuzzy matching.
-          Matches scoring 90 or more are accepted. Matches scoring 75–90 count only when ROR confirms them: a name
-          similarity alone can pair the wrong organisation, so it is not enough. Anything below 75 is left out rather
-          than guessed. This makes the EU project counts conservative: some real participations are missed, mostly
+          Matches scoring 90 or more are accepted.{" "}
+          {strict
+            ? "Matches scoring 75–90 count only when ROR confirms them: a name similarity alone can pair the wrong organisation, so it is not enough."
+            : "From the next weekly refresh, matches scoring 75–90 count only when ROR confirms them: a name similarity alone can pair the wrong organisation. Until then the data still includes some unconfirmed ones."}
+          {" "}Anything below 75 is left out rather than guessed. This makes the EU project counts conservative: some real participations are missed, mostly
           those of small organisations and companies whose names are written inconsistently. Universities and
           research institutes match well.
         </p>

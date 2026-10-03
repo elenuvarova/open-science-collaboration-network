@@ -210,10 +210,13 @@ def bulk_upsert_works(db, rows):
     return id_map
 
 
-def insert_project_participants(db, rows):
+def insert_project_participants(db, rows, run_tag=None):
     """Bulk-insert participant rows (project_id, institution_id, role), skipping
     (project_id, institution_id) pairs already present — preserves the old
-    per-row upsert's no-duplicate, accumulate-across-topics behavior."""
+    per-row upsert's no-duplicate, accumulate-across-topics behavior.
+
+    With run_tag, every pair in `rows` (new or already stored) is stamped as
+    seen by this run; sweep_unseen_participants() later drops the rest."""
     if not rows:
         return
     # De-dup within the batch first (the table has no unique constraint, so a
@@ -224,18 +227,42 @@ def insert_project_participants(db, rows):
         key = (r["project_id"], r["institution_id"])
         if key not in seen:
             seen.add(key)
-            batch.append(r)
+            batch.append({**r, "seen_run": run_tag} if run_tag else r)
     pids = list({r["project_id"] for r in batch})
     existing = set()
+    touched: list[int] = []  # ids of stored rows this run matched again
     for chunk in _chunks(pids, 500):
-        for pid, iid in db.query(
+        for row_id, pid, iid in db.query(
+            models.ProjectParticipant.id,
             models.ProjectParticipant.project_id,
             models.ProjectParticipant.institution_id,
         ).filter(models.ProjectParticipant.project_id.in_(chunk)).all():
             existing.add((pid, iid))
+            if (pid, iid) in seen:
+                touched.append(row_id)
+    if run_tag:
+        for chunk in _chunks(touched, 500):
+            db.query(models.ProjectParticipant).filter(
+                models.ProjectParticipant.id.in_(chunk)
+            ).update({"seen_run": run_tag}, synchronize_session=False)
     fresh = [r for r in batch if (r["project_id"], r["institution_id"]) not in existing]
     if fresh:
         db.execute(insert(models.ProjectParticipant), fresh)
+
+
+def sweep_unseen_participants(db, run_tag) -> tuple[int, int]:
+    """After a full run (every topic committed): delete participations the run
+    did not match, e.g. ones an older, looser matching rule accepted.
+    Returns (deleted, kept). Refuses when the run stamped nothing — that is a
+    broken run, not a reason to empty the table."""
+    PP = models.ProjectParticipant
+    kept = db.query(PP).filter(PP.seen_run == run_tag).count()
+    if kept == 0:
+        raise RuntimeError("sweep refused: this run matched no participations")
+    deleted = db.query(PP).filter((PP.seen_run.is_(None)) | (PP.seen_run != run_tag)).delete(
+        synchronize_session=False
+    )
+    return deleted, kept
 
 
 def replace_topic_metrics(db, topic_id, rows):
@@ -261,5 +288,6 @@ __all__ = [
     "bulk_upsert_project_outputs",
     "bulk_upsert_works",
     "insert_project_participants",
+    "sweep_unseen_participants",
     "replace_topic_metrics",
 ]

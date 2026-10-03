@@ -130,7 +130,7 @@ def test_suggest_ranks_and_excludes_consortium(client):
     top = out[0]
     assert top["id"] == 3  # linked to both partners + higher fit beats a single stronger link
     assert top["linked_partners"] == 2
-    assert top["why"] == "co-authorship ties with 2 of your partners · EU projects 14"
+    assert top["why"] == "co-authorship ties with 2 of your partners · 14 EU projects in total"
 
 
 def test_suggest_why_without_eu_projects(client):

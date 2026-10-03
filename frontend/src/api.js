@@ -27,7 +27,7 @@ export const getSuggestions = (topic, ids, role) => {
   return get("/suggest?" + p);
 };
 // Who in a consortium already works together (max 20 ids):
-// { topic_id, members, pairs: [{a, b, coauthor, project, weight}], isolated, weak, bridges }.
+// { topic_id, members, pairs: [{a, b, coauthor, project, weight, split_known}], isolated, weak, bridges }.
 export const getTies = (topic, ids) =>
   get("/consortium/ties?" + new URLSearchParams({ topic, ids: ids.join(",") }));
 // Open + forthcoming Horizon Europe call topics matched to a noda topic,

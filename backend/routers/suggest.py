@@ -12,6 +12,7 @@ from edge_split import edge_split
 from models import CollaborationEdge, Institution, InstitutionMetric
 from ratelimit import limiter
 from schemas import SuggestionOut
+from params import TopicId, parse_ids
 
 router = APIRouter(prefix="/api/suggest", tags=["suggest"])
 
@@ -30,47 +31,37 @@ TIE_WEIGHT = 0.6  # share of the blended score from graph ties; the rest is fit
 
 
 def _parse_ids(raw: str) -> list[int]:
-    try:
-        ids = sorted({int(x) for x in raw.split(",") if x.strip()})
-    except ValueError:
-        raise HTTPException(status_code=422, detail="ids must be comma-separated integers")
-    if not ids:
-        raise HTTPException(status_code=422, detail="ids must not be empty")
-    if len(ids) > MAX_IDS:
-        raise HTTPException(status_code=422, detail=f"at most {MAX_IDS} ids")
-    return ids
+    return parse_ids(raw, MAX_IDS)
 
 
-def _why(types: set, partners: int, eu_projects: int, works: float = 0.0, shared: float = 0.0, known: bool = False) -> str:
+def _plural(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+
+def _why(types: set, partners: int, eu_projects: int,
+         coauthored_with: int = 0, projects_with: int = 0, known: bool = False) -> str:
+    # Edges only give per-pair counts: one paper or project shared with three
+    # members sits on three edges. So name how many partners each kind of tie
+    # reaches, never a summed number of works or projects.
+    total = f" · {_plural(eu_projects, 'EU project', 'EU projects')} in total" if eu_projects else ""
+    if known and (coauthored_with or projects_with):
+        if coauthored_with and projects_with:
+            return f"co-authored with {coauthored_with} and shared EU projects with {projects_with} of your partners" + total
+        if coauthored_with:
+            return f"co-authored with {coauthored_with} of your partners" + total
+        return f"shared EU projects with {projects_with} of your partners" + total
     who = f"{partners} of your partners"
-    if known:
-        # Split known: clean counts (co-authored works / shared EU projects).
-        w, p = round(works), round(shared)
-        wt = f"{w} {'work' if w == 1 else 'works'}"
-        pt = f"{p} EU {'project' if p == 1 else 'projects'}"
-        if w and p:
-            text = f"co-authored {wt} and shared {pt} with {who}"
-        elif w:
-            text = f"co-authored {wt} with {who}"
-        else:
-            text = f"shared {pt} with {who}"
-        return text + (f" · {eu_projects} EU projects in total" if eu_projects else "")
     # A "coauthor" edge may also carry shared EU projects (the ETL folds them in),
     # so only a project-only edge can be described as "EU projects".
-    if "coauthor" in types:
-        parts = [f"co-authorship ties with {who}"]
-    else:
-        parts = [f"in EU projects with {who}"]
-    if eu_projects:
-        parts.append(f"EU projects {eu_projects}")
-    return " · ".join(parts)
+    text = f"co-authorship ties with {who}" if "coauthor" in types else f"in EU projects with {who}"
+    return text + total
 
 
 @router.get("", response_model=list[SuggestionOut])
 @limiter.limit("30/minute")
 def suggest(
     request: Request,
-    topic: int = Query(...),
+    topic: TopicId,
     ids: str = Query(..., description="comma-separated consortium institution ids"),
     role: Optional[Literal["research", "technical", "policy", "ngo"]] = None,
     db: Session = Depends(get_db),
@@ -89,7 +80,8 @@ def suggest(
     # edges between the same two institutions add up.
     pair: dict[tuple[int, int], float] = defaultdict(float)
     etypes: dict[int, set] = defaultdict(set)
-    counts: dict[int, list] = defaultdict(lambda: [0.0, 0.0, True])  # cand -> works, projects, split known
+    # cand -> members it co-authored with, members it shared projects with, split known
+    reach: dict[int, list] = defaultdict(lambda: [set(), set(), True])
     for e in edges:
         s, t = e.source_institution_id, e.target_institution_id
         if (s in member_set) == (t in member_set):
@@ -99,10 +91,12 @@ def suggest(
         if e.type:
             etypes[cand].add(e.type)
         works, projects, known = edge_split(e)
-        c = counts[cand]
-        c[0] += works
-        c[1] += projects
-        c[2] = c[2] and known  # any legacy edge: describe this candidate by strength
+        r = reach[cand]
+        if works:
+            r[0].add(member)
+        if projects:
+            r[1].add(member)
+        r[2] = r[2] and known  # any legacy edge: describe this candidate by strength
     if not pair:
         return []
 
@@ -145,7 +139,8 @@ def suggest(
             eu_projects=eu,
             score=round(score, 1),
             linked_partners=len(linked[inst.id]),
-            why=_why(etypes[inst.id], len(linked[inst.id]), eu, *counts[inst.id]),
+            why=_why(etypes[inst.id], len(linked[inst.id]), eu,
+                     len(reach[inst.id][0]), len(reach[inst.id][1]), reach[inst.id][2]),
         ))
     out.sort(key=lambda s: (-s.score, s.id))
     return out[:LIMIT]

@@ -15,7 +15,7 @@ function years(p) {
 // A coauthor edge can also include shared EU projects (one edge per pair in the ETL).
 const EDGE_LABELS = { coauthor: "co-authorship", project: "EU projects" };
 
-// Split known: clean counts ("co-authored 3 works · 2 shared EU projects").
+// Split known: clean counts ("co-authored 3 works · 2 shared EU projects on topic").
 // Unknown (null counts, rows from before the split): the old type labels.
 function edgeText(c) {
   if (c.coauthor_works == null || c.shared_projects == null) {
@@ -23,8 +23,9 @@ function edgeText(c) {
   }
   const parts = [];
   if (c.coauthor_works > 0) parts.push(`co-authored ${c.coauthor_works} ${c.coauthor_works === 1 ? "work" : "works"}`);
-  if (c.shared_projects > 0) parts.push(`${c.shared_projects} shared EU ${c.shared_projects === 1 ? "project" : "projects"}`);
-  return parts.join(" · ");
+  if (c.shared_projects > 0) parts.push(`${c.shared_projects} shared EU ${c.shared_projects === 1 ? "project" : "projects"} on topic`);
+  // Ranked by a tie from EU projects that only the broad keyword match counts.
+  return parts.length ? parts.join(" · ") : "EU projects on related keywords";
 }
 
 // Evidence behind the score: CORDIS projects, totals and the closest co-partners.

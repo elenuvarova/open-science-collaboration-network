@@ -111,7 +111,7 @@ function Grid({ members, tied, maxW }) {
         <span className="ties-swatch is-weak" aria-hidden="true" /> Weaker
         <span className="ties-swatch is-strong" aria-hidden="true" /> Stronger
         · The number is the tie strength: each co-authored work counts 1, each shared EU project 0.5
-        (or 1 when the pair never co-authored).{anySplit && " Hover or select a cell for the counts."}
+        (or 1 when the pair never co-authored).{anySplit && " Hover a cell, or switch to List, for the counts."}
       </p>
     </>
   );

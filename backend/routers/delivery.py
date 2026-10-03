@@ -15,6 +15,7 @@ from models import Institution, Project, ProjectOutput, ProjectParticipant
 from ratelimit import limiter
 from schemas import DeliveryOut, DeliveryTotals
 from topic_match import topic_project_clause
+from params import InstitutionId, OptTopicId
 
 router = APIRouter(prefix="/api/institutions", tags=["delivery"])
 
@@ -27,8 +28,8 @@ def _total(col):
 @limiter.limit("60/minute")
 def get_delivery(
     request: Request,
-    institution_id: int,
-    topic: Optional[int] = Query(None),
+    institution_id: InstitutionId,
+    topic: OptTopicId = None,
     db: Session = Depends(get_db),
 ):
     if db.get(Institution, institution_id) is None:

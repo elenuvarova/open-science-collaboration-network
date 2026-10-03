@@ -24,7 +24,7 @@ from sqlalchemy.pool import StaticPool
 
 from db import Base, get_db
 from migrate import ensure_edge_split_columns
-from models import CollaborationEdge, Institution, InstitutionMetric, Topic
+from models import CollaborationEdge, Institution, InstitutionMetric, Project, ProjectParticipant, Topic
 from ratelimit import limiter
 from routers import consortium, evidence, suggest
 
@@ -73,6 +73,13 @@ def _seed(Session):
     edge(5, 2, "coauthor", 1.0, works=1, projects=0)
     edge(6, 1, "project", 2.0, works=0, projects=2)    # candidate 6: projects only
     edge(7, 1, "coauthor", 3.0)                        # candidate 7: legacy, unknown split
+    # Participations behind the evidence panel. Topic stem "project": 101 and 102
+    # are on topic (stem in the title); 103 is not, though the ETL's broad filter
+    # put it on the 1-3 edge above (project_weight 2).
+    for pid, title in [(101, "Climate project A"), (102, "Project B"), (103, "Unrelated work")]:
+        db.add(Project(id=pid, cordis_id=f"C{pid}", title=title, abstract=""))
+    for pid, iid in [(101, 1), (101, 2), (102, 1), (102, 2), (103, 1), (103, 3)]:
+        db.add(ProjectParticipant(project_id=pid, institution_id=iid, role="participant"))
     db.commit()
     db.close()
 
@@ -98,18 +105,33 @@ def test_evidence_copartners_counts_and_legacy(client):
     assert (partners[2]["coauthor_works"], partners[2]["shared_projects"]) == (3, 2)
     assert partners[2]["weight"] == 4.0
     assert partners[3]["edge_types"] == ["project"]
-    assert (partners[3]["coauthor_works"], partners[3]["shared_projects"]) == (0, 2)
+    # Shared projects use the strict on-topic match, like the totals: 103 is off topic.
+    assert (partners[3]["coauthor_works"], partners[3]["shared_projects"]) == (0, 0)
     # Legacy: counts unknown (omitted), type as stored.
     assert partners[4]["edge_types"] == ["coauthor"]
     assert "coauthor_works" not in partners[4] and "shared_projects" not in partners[4]  # None fields are omitted
 
 
+def test_evidence_shared_projects_never_exceed_strict_totals(client):
+    body = client.get("/api/institutions/1/evidence?topic=1").json()
+    assert body["totals"]["projects"] == 2  # 101, 102 (103 is off topic)
+    assert all((p.get("shared_projects") or 0) <= body["totals"]["projects"] for p in body["co_partners"])
+
+
 def test_suggest_why_uses_counts_when_known_and_strength_when_not(client):
     out = {s["id"]: s for s in client.get("/api/suggest?topic=1&ids=1,2").json()}
-    assert out[5]["why"] == "co-authored 4 works and shared 2 EU projects with 2 of your partners · 4 EU projects in total"
-    assert out[6]["why"] == "shared 2 EU projects with 1 of your partners"  # eu_projects == 0: no suffix
-    # Legacy candidate keeps today's wording.
-    assert out[7]["why"] == "co-authorship ties with 1 of your partners · EU projects 2"
+    # Partners reached, not summed pair counts: one paper with members 1 and 2
+    # sits on two edges and must not read as "2 works".
+    assert out[5]["why"] == "co-authored with 2 and shared EU projects with 1 of your partners · 4 EU projects in total"
+    assert out[6]["why"] == "shared EU projects with 1 of your partners"  # eu_projects == 0: no suffix
+    # Legacy candidate keeps the strength wording.
+    assert out[7]["why"] == "co-authorship ties with 1 of your partners · 2 EU projects in total"
+
+
+def test_suggest_why_singular_total():
+    from routers.suggest import _why
+    assert _why(set(), 1, 1, 0, 1, True) == "shared EU projects with 1 of your partners · 1 EU project in total"
+    assert _why({"coauthor"}, 1, 0, 0, 0, True) == "co-authorship ties with 1 of your partners"  # nothing known: strength
 
 
 def test_migration_adds_missing_columns_idempotently():
