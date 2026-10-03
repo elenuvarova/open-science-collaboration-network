@@ -1362,3 +1362,6 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .ties-pair-strength { width: 72px; flex-shrink: 0; text-align: right; }
 .ties-chips { list-style: none; display: flex; flex-wrap: wrap; margin-top: var(--sp-2); }
 @media (hover: none) { .ties-cell { width: 48px; height: 44px; } }
+
+/* Readable measure for explanatory copy on wide screens (was 150–180 chars/line at 1920px). */
+.gap-note, .evidence-note, .ties-legend, .ties-note, .pipeline-intro, .calls-intro p, .compare-lead, .weights-note, .delivery-caveat, .delivery-note { max-width: 75ch; }
