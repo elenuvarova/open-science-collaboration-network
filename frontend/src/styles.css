@@ -774,7 +774,7 @@ a:hover { color: var(--accent-h); }
 .gap-note { font-size: var(--text-xs); line-height: var(--leading-snug); margin-top: var(--sp-3); }
 .gap-note a { color: var(--accent); }
 .gap-roles-note { margin-top: var(--sp-2); }
-.gap-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-5); align-items: start; }
+.gap-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--sp-3); margin-top: var(--sp-5); align-items: start; }
 .gap-panels .card + .card { margin-top: 0; }
 .gap-panel h3.eyebrow { margin: 0 0 var(--sp-3); }
 .gap-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
@@ -1153,7 +1153,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .weights { border: 1px solid var(--border); margin-bottom: var(--sp-4); }
 .weights legend { padding: 0 var(--sp-1); }
 .weights-note { font-size: var(--text-xs); margin-bottom: var(--sp-3); }
-.weights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--sp-3) var(--sp-6); margin-bottom: var(--sp-3); }
+.weights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: var(--sp-3) var(--sp-6); margin-bottom: var(--sp-3); }
 .weight { display: grid; grid-template-columns: 1fr 28px; grid-template-rows: auto auto; column-gap: var(--sp-2); align-items: center; font-size: var(--text-sm); }
 .weight-label { grid-column: 1 / -1; color: var(--text-2); }
 .weight input[type="range"] { width: 100%; accent-color: var(--text-1); min-height: 24px; }
