@@ -10,4 +10,4 @@ python-dotenv==1.2.2
 # v2: embeddings (ONNX, no torch) + brief generation
 fastembed==0.4.1
 groq==1.4.0
-numpy>=1.26
+numpy>=2.5.3
