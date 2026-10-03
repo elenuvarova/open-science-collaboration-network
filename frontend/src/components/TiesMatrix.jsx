@@ -4,6 +4,7 @@ import { track } from "../analytics";
 import EmptyState from "./EmptyState";
 import Icon from "./Icon";
 import TypeBadge from "./TypeBadge";
+import Segmented from "./Segmented";
 
 const MAX_MEMBERS = 20; // the API's limit on ids
 const GRID_MAX = 8;     // beyond this the grid gets unreadable: show a list of pairs
@@ -222,11 +223,7 @@ export default function TiesMatrix({ topicId, consortium = [], onToggleConsortiu
             {data.pairs.length} of {total} {total === 1 ? "pair has" : "pairs have"} a recorded tie.
           </p>
           {members.length <= GRID_MAX && data.pairs.length > 0 && (
-            <div className="segmented" role="group" aria-label="Show ties as">
-              {[["grid", "Grid"], ["list", "List"]].map(([v, label]) => (
-                <button key={v} type="button" className="segmented-btn" aria-pressed={view === v} onClick={() => setView(v)}>{label}</button>
-              ))}
-            </div>
+            <Segmented label="Show ties as" value={view} onChange={setView} options={[["grid", "Grid"], ["list", "List"]]} />
           )}
         </div>
 

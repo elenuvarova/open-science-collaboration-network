@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { getInstitutions } from "../api";
+import { createPortal } from "react-dom";
+import { AnimatePresence, m } from "motion/react";
+import RollingNumber from "../components/RollingNumber";
 import InstitutionProfile from "./InstitutionProfile";
 import TypeBadge from "../components/TypeBadge";
 import ScoreRing from "../components/ScoreRing";
@@ -93,38 +96,66 @@ function downloadCsv(filename, header, rows) {
 
 const HOVER_CARD_W = 240; // keep in sync with the card's `width` below
 
-function HoverCard({ inst, anchor }) {
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+function HoverCard({ inst, anchor, onEnter, onLeave, onClose }) {
+  const [pos, setPos] = useState({ top: 0, left: 0, origin: "left top" });
   const cardRef = useRef(null);
 
-  useEffect(() => {
-    if (!anchor || !cardRef.current) return;
-    const rect = anchor.getBoundingClientRect();
-    const cardH = cardRef.current.offsetHeight || 200;
-    const winH = window.innerHeight;
-    const winW = window.innerWidth;
-    const top = Math.max(8, Math.min(rect.top, winH - cardH - 16));
-    // Prefer the right of the row; on full-width rows that overflows the viewport,
-    // so flip to the left side. Clamp to ≥8px so it's never clipped off-screen.
-    const wouldOverflowRight = rect.right + 12 + HOVER_CARD_W > winW;
-    const left = wouldOverflowRight
-      ? Math.max(8, rect.left - 12 - HOVER_CARD_W)
-      : rect.right + 12;
-    setPos({ top, left });
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!anchor || !card) return undefined;
+    const place = () => {
+      const rect = anchor.getBoundingClientRect();
+      const cardH = card.offsetHeight || 200;
+      const winH = window.innerHeight;
+      const winW = window.innerWidth;
+      const sideTop = Math.max(8, Math.min(rect.top, winH - cardH - 16));
+      // Beside the row when there is room (right first, then left). Otherwise, as on
+      // most screens where rows run full width, just below the row, under its score
+      // (or above it near the bottom of the window): never on top of the row it
+      // describes, so the pointer can still travel onto the card.
+      if (rect.right + 12 + HOVER_CARD_W <= winW) {
+        setPos({ top: sideTop, left: rect.right + 12, origin: "left top" });
+      } else if (rect.left - 12 - HOVER_CARD_W >= 8) {
+        setPos({ top: sideTop, left: rect.left - 12 - HOVER_CARD_W, origin: "right top" });
+      } else {
+        const below = rect.bottom + 6 + cardH <= winH - 8;
+        const left = Math.max(8, Math.min(rect.right - HOVER_CARD_W - 8, winW - HOVER_CARD_W - 8));
+        setPos({ top: below ? rect.bottom + 6 : Math.max(8, rect.top - 6 - cardH), left, origin: below ? "right top" : "right bottom" });
+      }
+    };
+    place();
+    // The card settles its height after first paint (fonts, the ring): place it again.
+    const ro = new ResizeObserver(place);
+    ro.observe(card);
+    return () => ro.disconnect();
   }, [anchor]);
 
-  if (!inst || !anchor) return null;
+  // Content shown on hover or focus must be dismissible without moving the
+  // pointer or focus (WCAG 1.4.13): Esc closes it.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const breakdown = inst.score_breakdown || {};
   const entries = Object.entries(breakdown).slice(0, 6);
 
   return (
-    <div
+    <m.div
       ref={cardRef}
+      className="hover-card"
+      // Hoverable (WCAG 1.4.13): the pointer can move from the row onto the card.
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.1 } }}
       style={{
         position: "fixed",
         top: pos.top,
         left: pos.left,
+        transformOrigin: pos.origin,
         zIndex: "var(--z-popover)",
         background: "var(--surface)",
         border: "1px solid var(--border)",
@@ -132,8 +163,6 @@ function HoverCard({ inst, anchor }) {
         padding: "var(--sp-4)",
         width: HOVER_CARD_W,
         boxShadow: "var(--shadow-lg)",
-        pointerEvents: "none",
-        animation: "fadeIn var(--dur-fast) ease",
       }}
     >
       <div style={{ display: "flex", gap: "var(--sp-3)", alignItems: "center", marginBottom: "var(--sp-3)" }}>
@@ -147,15 +176,15 @@ function HoverCard({ inst, anchor }) {
           </div>
         </div>
       </div>
-      {entries.map(([k, v]) => (
+      {entries.map(([k, v], i) => (
         <div key={k} style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: "var(--sp-1)" }}>
           <div style={{ flex: 1, height: "var(--bar-h)", background: "var(--border)", borderRadius: "var(--r-full)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.min((v / (SCORE_MAX[k] || 30)) * 100, 100)}%`, background: "var(--accent)", borderRadius: "var(--r-full)" }} />
+            <div className="grow-x" style={{ "--i": i, height: "100%", width: `${Math.min((v / (SCORE_MAX[k] || 30)) * 100, 100)}%`, background: "var(--accent)", borderRadius: "var(--r-full)" }} />
           </div>
           <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", width: 24, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{v.toFixed(0)}</span>
         </div>
       ))}
-    </div>
+    </m.div>
   );
 }
 
@@ -165,7 +194,10 @@ const MAX_COMPARE = 4; // keep in sync with MAX_COMPARE in App.jsx
 function CompareTray({ compare, onClear, onOpen }) {
   const full = compare.length >= MAX_COMPARE;
   return (
-    <section className="compare-tray" aria-label="Partners to compare">
+    <m.section className="compare-tray" aria-label="Partners to compare"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8, transition: { duration: 0.15, ease: "easeIn" } }}>
       <div className="compare-tray-main">
         <ul className="compare-tray-names">
           {compare.map((c) => <li key={c.id} className="tag" title={c.name}>{c.name || `Partner ${c.id}`}</li>)}
@@ -177,9 +209,12 @@ function CompareTray({ compare, onClear, onOpen }) {
       </div>
       <div className="compare-tray-actions">
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClear}>Clear</button>
-        <button type="button" className="btn btn-primary" onClick={onOpen}>Compare ({compare.length})</button>
+        <button type="button" className="btn btn-primary" onClick={onOpen} aria-label={`Compare (${compare.length})`}>
+          {/* One inline run: .btn is a flex row with a gap between its children. */}
+          <span>Compare (<RollingNumber value={compare.length} />)</span>
+        </button>
       </div>
-    </section>
+    </m.section>
   );
 }
 
@@ -228,10 +263,23 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
     }, 280);
   }
 
+  // A short grace period lets the pointer cross the gap from the row onto the card.
   function onMouseLeave() {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(closeHover, 150);
+  }
+
+  function closeHover() {
     clearTimeout(hoverTimer.current);
     setHovered(null);
     setHoverAnchor(null);
+  }
+
+  // Keyboard users get the same preview when the name button takes focus.
+  function onNameFocus(inst, row) {
+    clearTimeout(hoverTimer.current);
+    setHovered(inst);
+    setHoverAnchor(row);
   }
 
   if (profileId) {
@@ -358,7 +406,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
         />
       )}
 
-      {loading && (
+      {loading && list.length === 0 && (
         <div role="status" aria-live="polite">
           <span className="sr-only">Loading partners…</span>
           <SkeletonList rows={10} />
@@ -394,7 +442,10 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
         )
       )}
 
-      {!loading && !error && rows.map((inst, i) => {
+      {/* A filter change keeps the current rows, dimmed, until the new ones arrive:
+          calmer than flashing skeletons for a list that is already on screen. */}
+      <div className={loading ? "rows is-refreshing" : "rows"} aria-busy={loading || undefined}>
+      {(!loading || list.length > 0) && !error && rows.map((inst, i) => {
         const inConsortium = consortiumIds.has(inst.id);
         return (
           <div
@@ -409,7 +460,10 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           >
             <span className="inst-rank">{i + 1}</span>
             <div className="inst-info">
-              <button type="button" className="inst-name inst-name-btn" onClick={(e) => { e.stopPropagation(); onOpenProfile(inst.id); }}>{inst.name}</button>
+              <button type="button" className="inst-name inst-name-btn"
+                onFocus={(e) => onNameFocus(inst, e.currentTarget.closest(".inst-row"))}
+                onBlur={onMouseLeave}
+                onClick={(e) => { e.stopPropagation(); onOpenProfile(inst.id); }}>{inst.name}</button>
               <div className="inst-meta" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap", marginTop: "var(--sp-1)" }}>
                 <TypeBadge type={inst.type} />
                 <span title={countryName(inst.country)}>{inst.country}{isWidening(inst.country) && <><span className="widening-dot" title="Widening country" aria-hidden="true" /><span className="sr-only"> (widening country)</span></>}</span>
@@ -431,15 +485,18 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                   title={blocked ? "You can compare up to 4 partners. Untick one to pick another." : undefined}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <input
-                    id={`compare-${inst.id}`}
-                    type="checkbox"
-                    checked={picked}
-                    disabled={blocked}
-                    aria-label={`Compare ${inst.name}`}
-                    aria-describedby={blocked ? "compare-limit-reason" : undefined}
-                    onChange={() => onToggleCompare(original(inst))}
-                  />
+                  <span className="check-box">
+                    <input
+                      id={`compare-${inst.id}`}
+                      type="checkbox"
+                      checked={picked}
+                      disabled={blocked}
+                      aria-label={`Compare ${inst.name}`}
+                      aria-describedby={blocked ? "compare-limit-reason" : undefined}
+                      onChange={() => onToggleCompare(original(inst))}
+                    />
+                    {picked && <Icon name="check" size={10} strokeWidth={2.6} draw className="check-box-tick" />}
+                  </span>
                   <span className="compare-check-text" aria-hidden="true">Compare</span>
                 </label>
               );
@@ -451,14 +508,25 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
                 aria-label={inConsortium ? "Remove from consortium" : "Add to consortium"}
                 onClick={(e) => { e.stopPropagation(); onToggleConsortium(original(inst)); }}
               >
-                <Icon name={inConsortium ? "check" : "plus"} size={14} />
+                <Icon key={inConsortium ? "on" : "off"} name={inConsortium ? "check" : "plus"} size={14} draw={inConsortium} />
               </button>
             )}
           </div>
         );
       })}
+      </div>
 
-      <HoverCard inst={hovered} anchor={hoverAnchor} />
+      {/* Portalled to <body>: an ancestor keeps a transform from its entrance
+          animation, which would make position: fixed relative to it, not the window. */}
+      {createPortal(
+        <AnimatePresence>
+          {hovered && hoverAnchor && (
+            <HoverCard key={hovered.id} inst={hovered} anchor={hoverAnchor}
+              onEnter={() => clearTimeout(hoverTimer.current)} onLeave={onMouseLeave} onClose={closeHover} />
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
 
       {onToggleCompare && (
         <>
@@ -466,8 +534,10 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
           <p className="sr-only" role="status" aria-live="polite">
             {compare.length ? `${compare.length} of ${MAX_COMPARE} partners selected for comparison.` : ""}
           </p>
+          <AnimatePresence>
           {compare.length >= 2 && (
             <CompareTray
+              key="tray"
               compare={compare}
               onClear={() => {
                 // The tray unmounts, so hand keyboard focus back to the row the user last ticked.
@@ -478,6 +548,7 @@ export default function Shortlist({ topicId, consortium = [], onToggleConsortium
               onOpen={onOpenCompare}
             />
           )}
+          </AnimatePresence>
         </>
       )}
     </div>

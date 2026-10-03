@@ -1,6 +1,17 @@
 /* ═══════════════════════════════════════════════════════
    Design tokens
    ═══════════════════════════════════════════════════════ */
+/* Until Roboto Serif arrives, headings are set in Georgia scaled to the same
+   width (the condensed Roboto Serif runs ~95% of Georgia), so the swap doesn't
+   re-wrap the landing headline and shift the page (it measured CLS 0.18). */
+@font-face {
+  font-family: "Roboto Serif Fallback";
+  src: local("Georgia");
+  size-adjust: 95%;
+  ascent-override: 98%;   /* Roboto Serif's 0.93 em ascent / 0.95 */
+  descent-override: 25%;  /* and its 0.24 em descent */
+}
+
 :root {
   /* Spacing scale (4px base) */
   --sp-1:  4px;
@@ -83,6 +94,15 @@
   /* --transition stays the canonical "hover" shorthand, now built from --dur */
   --transition: var(--dur) ease;
 
+  /* Micro-interactions: ui = a state change (tick, toast, tray), move = something
+     travelling (tab pill, card settling). No overshoot anywhere: this is a tool
+     people trust with a grant, not a toy. --ease-draw is for one-off reveals. */
+  --dur-ui:   200ms;
+  --dur-move: 250ms;
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in:   cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-draw: cubic-bezier(0.85, 0, 0.15, 1);
+
   /*
    * Z-index scale — named stacking layers so literals don't drift.
    *   base    : in-flow lift
@@ -148,7 +168,7 @@
 
   /* Type: Outfit for UI, Roboto Serif (narrow cut) for display + numbers */
   --font-ui: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Roboto Serif", Georgia, serif;
+  --font-display: "Roboto Serif", "Roboto Serif Fallback", Georgia, serif;
   --display-axes: "wdth" 75, "opsz" 72;
 }
 
@@ -1033,29 +1053,28 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 /* ═══════════════════════════════════════════════════════
    Skeleton loading
    ═══════════════════════════════════════════════════════ */
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
+/* A calm pulse rather than a sweeping shimmer: a loading list shouldn't be the
+   busiest thing on the page. Static under reduced motion. */
+@keyframes skel-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
 }
 
 .skel {
-  background: linear-gradient(
-    90deg,
-    var(--surface-2) 25%,
-    var(--surface-3) 50%,
-    var(--surface-2) 75%
-  );
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
+  background: var(--surface-3);
+  animation: skel-pulse 1.6s ease-in-out infinite;
   border-radius: var(--r-sm);
 }
 
 /* ═══════════════════════════════════════════════════════
    Page & element transitions
    ═══════════════════════════════════════════════════════ */
+/* Used with fill-mode backwards, never both: a transform left filled after the
+   entrance (even an identity one) made <main> the containing block for anything
+   position: fixed inside it, offsetting popovers by the header height. */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 
 @keyframes fadeInFast {
@@ -1065,11 +1084,11 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 
 /* Entrances use --dur (base); the bare fast fade uses --dur-fast. Stagger
    delays below stay as raw small offsets — they're rhythm, not durations. */
-.fade-in  { animation: fadeIn     var(--dur) ease both; }
+.fade-in  { animation: fadeIn     var(--dur) ease backwards; }
 .fade-in-fast { animation: fadeInFast var(--dur-fast) ease both; }
 
 /* Stagger children in lists */
-.inst-row { animation: fadeIn var(--dur) ease both; }
+.inst-row { animation: fadeIn var(--dur) ease backwards; }
 .inst-row:nth-child(1)  { animation-delay: 0.02s; }
 .inst-row:nth-child(2)  { animation-delay: 0.04s; }
 .inst-row:nth-child(3)  { animation-delay: 0.06s; }
@@ -1077,7 +1096,7 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 .inst-row:nth-child(5)  { animation-delay: 0.10s; }
 .inst-row:nth-child(n+6){ animation-delay: 0.12s; }
 
-.gap-card { animation: fadeIn var(--dur) ease both; }
+.gap-card { animation: fadeIn var(--dur) ease backwards; }
 .gap-card:nth-child(1) { animation-delay: 0.03s; }
 .gap-card:nth-child(2) { animation-delay: 0.06s; }
 .gap-card:nth-child(3) { animation-delay: 0.09s; }
@@ -1233,7 +1252,19 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
   transition: background var(--dur-fast), color var(--dur-fast);
 }
 .compare-check:hover { background: var(--surface-3); color: var(--text-1); }
-.compare-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--text-1); cursor: pointer; }
+/* Custom checkbox: the native input stays (focus, keyboard, name), drawn by CSS,
+   with a tick that draws itself in when checked. */
+.check-box { position: relative; display: inline-grid; place-items: center; width: var(--cb, 16px); height: var(--cb, 16px); flex-shrink: 0; }
+.check-box > input {
+  grid-area: 1 / 1; appearance: none; -webkit-appearance: none; margin: 0;
+  width: var(--cb, 16px); height: var(--cb, 16px); border: 1.5px solid var(--text-2); border-radius: 4px;
+  background: var(--surface); cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.check-box > input:checked { background: var(--text-1); border-color: var(--text-1); }
+.check-box > input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check-box > input:disabled { cursor: not-allowed; }
+.check-box > .check-box-tick { grid-area: 1 / 1; width: calc(var(--cb, 16px) * 0.62); height: calc(var(--cb, 16px) * 0.62); color: var(--on-accent); pointer-events: none; }
 .compare-check.is-disabled, .compare-check.is-disabled input { cursor: not-allowed; }
 .compare-check.is-disabled { opacity: 0.6; }
 .compare-check.is-disabled:hover { background: none; }
@@ -1365,3 +1396,95 @@ button.tag:hover { color: var(--text-1); border-color: var(--text-3); }
 
 /* Readable measure for explanatory copy on wide screens (was 150–180 chars/line at 1920px). */
 .gap-note, .evidence-note, .ties-legend, .ties-note, .pipeline-intro, .calls-intro p, .compare-lead, .weights-note, .delivery-caveat, .delivery-note { max-width: 75ch; }
+
+/* ═══════════════════════════════════════════════════════
+   Micro-interactions
+   Everything here collapses to its end state under prefers-reduced-motion (the
+   global block above shortens animations/transitions to 0.01ms, fill forwards).
+   ═══════════════════════════════════════════════════════ */
+
+/* Sliding indicator (useSlidingIndicator): one pill travels to the active item. */
+.has-indicator { position: relative; isolation: isolate; }
+.has-indicator > .indicator {
+  position: absolute; left: 0; top: 0; z-index: -1;
+  width: var(--ind-w, 0); height: var(--ind-h, 0);
+  transform: translate(var(--ind-x, 0), var(--ind-y, 0));
+  opacity: var(--ind-o, 0);
+  pointer-events: none;
+}
+.has-indicator[data-ind-ready] > .indicator {
+  transition: transform var(--dur-move) var(--ease-out), width var(--dur-move) var(--ease-out),
+    height var(--dur-move) var(--ease-out), opacity var(--dur-fast);
+}
+.topbar nav.has-indicator > .indicator { background: var(--text-1); border-radius: var(--r-sm); }
+.topbar nav.has-indicator .nav-btn.active,
+.topbar nav.has-indicator .nav-btn.active:hover { background: none; }
+.segmented.has-indicator > .indicator { background: var(--surface); border-radius: var(--r-sm); box-shadow: var(--shadow-sm); }
+.segmented.has-indicator .segmented-btn[aria-pressed="true"] { background: none; box-shadow: none; }
+
+/* A count that rolls (RollingNumber): old and new value share one grid cell. */
+.roll { display: inline-grid; overflow: hidden; vertical-align: bottom; }
+.roll > * { grid-area: 1 / 1; }
+.nav-badge { animation: badge-in var(--dur-ui) var(--ease-out); }
+@keyframes badge-in { from { opacity: 0; transform: scale(0.6); } }
+
+/* Strokes that draw themselves (Icon draw): ticks, the copy → check swap. */
+.icon-draw path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-stroke var(--dur-ui) var(--ease-out) forwards; }
+@keyframes draw-stroke { to { stroke-dashoffset: 0; } }
+
+/* Small entrances. */
+.rise-in { animation: rise-in var(--dur-ui) var(--ease-out) backwards; }
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* Data bars grow from their baseline once, slightly staggered by --i. */
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x var(--dur-data) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes grow-x { from { transform: scaleX(0); } }
+
+/* A list being refreshed by a filter change: old rows stay, dimmed, until the new ones land. */
+.rows { transition: opacity var(--dur-ui) var(--ease-out); }
+.rows.is-refreshing { opacity: 0.4; pointer-events: none; }
+
+/* Copy buttons (CopyButton): both labels share one cell, so the width holds. */
+.copy-btn { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.copy-btn-text { display: inline-grid; }
+.copy-btn-text > span { grid-area: 1 / 1; transition: opacity var(--dur-ui) var(--ease-out), transform var(--dur-ui) var(--ease-out); }
+.copy-btn-text > span:last-child { opacity: 0; transform: translateY(4px); }
+.copy-btn[data-copied] .copy-btn-text > span:first-child { opacity: 0; transform: translateY(-4px); }
+.copy-btn[data-copied] .copy-btn-text > span:last-child { opacity: 1; transform: none; }
+
+/* Score ring: fills from empty once on mount, then eases to whatever it shows
+   (a breakdown component under the pointer, a re-weighted score). Backwards fill
+   only, so after the first fill the transition owns the value. */
+.ring-progress {
+  transition: stroke-dashoffset var(--dur-move) var(--ease-out), stroke var(--dur-ui);
+  animation: ring-fill var(--dur-data) var(--ease-out) backwards;
+}
+@keyframes ring-fill { from { stroke-dashoffset: var(--ring-from); } }
+
+/* Ring ↔ breakdown: the other bars step back (text keeps its contrast). */
+.breakdown-bar-bg { transition: opacity var(--dur-ui) var(--ease-out); }
+.breakdown.has-focus .breakdown-row:not(.is-focus) .breakdown-bar-bg { opacity: 0.35; }
+.breakdown-label { transition: color var(--dur-ui); }
+.breakdown.has-focus .breakdown-row.is-focus .breakdown-label { color: var(--text-1); }
+
+/* Tour progress: "Step n of N" and a bar that fills step by step. */
+.tour-progress { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-6); }
+.tour-step { margin: 0; font-size: var(--text-xs); font-weight: var(--w-medium); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tour-track { width: 96px; height: 4px; border-radius: var(--r-full); background: var(--border); overflow: hidden; }
+.tour-fill { height: 100%; background: var(--accent); transform-origin: left center; transition: transform var(--dur-move) var(--ease-out); }
+
+/* Disclosures open and close by height where the browser can animate to `auto`;
+   elsewhere they snap, as before. */
+@supports (interpolate-size: allow-keywords) and selector(::details-content) {
+  .compare-same, .score-help { interpolate-size: allow-keywords; }
+  .compare-same::details-content, .score-help::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition: block-size var(--dur-move) var(--ease-out), content-visibility var(--dur-move) allow-discrete;
+  }
+  .compare-same[open]::details-content, .score-help[open]::details-content { block-size: auto; }
+}

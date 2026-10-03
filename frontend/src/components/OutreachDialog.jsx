@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
 import Icon from "./Icon";
+import CopyButton from "./CopyButton";
 import { buildDraft, useEvidence } from "../outreach";
 import { statusLabel } from "../pipeline";
 import "./outreach.css";
@@ -35,6 +36,7 @@ export default function OutreachDialog({ inst, topicId, topicName, call, consort
   const [notice, setNotice] = useState("");
   const textRef = useRef(null);
   const copyRef = useRef(null);
+  const [copied, setCopied] = useState(false);
 
   const fresh = () => buildDraft({ inst, topicName, call, evidence, consortium });
 
@@ -51,7 +53,11 @@ export default function OutreachDialog({ inst, topicId, topicName, call, consort
   async function copy() {
     const ok = await copyText(draft, textRef.current);
     setNotice(ok ? "Copied to the clipboard." : "Couldn’t copy automatically. Select the text and copy it yourself.");
-    if (ok) onCopied();
+    if (ok) {
+      onCopied();
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
     copyRef.current?.focus();
   }
 
@@ -63,9 +69,8 @@ export default function OutreachDialog({ inst, topicId, topicName, call, consort
       wide
       footer={
         <>
-          <button ref={copyRef} type="button" className="btn btn-primary" onClick={copy} disabled={loading}>
-            <Icon name="copy" size={14} /> Copy
-          </button>
+          <CopyButton buttonRef={copyRef} className="btn btn-primary" copied={copied} onClick={copy} disabled={loading}
+            idle="Copy" done="Copied" announce={false} />
           {BEFORE_CONTACT.has(status) ? (
             <button type="button" className="btn btn-secondary" onClick={onMarkContacted}>
               <Icon name="check" size={14} /> Mark as contacted

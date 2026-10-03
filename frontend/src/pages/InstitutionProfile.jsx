@@ -12,6 +12,8 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
   const [inst, setInst] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // The breakdown row under the pointer, mirrored in the score ring.
+  const [focusKey, setFocusKey] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -41,7 +43,8 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
       <div className="card">
         {/* Header */}
         <div style={{ display: "flex", gap: "var(--sp-4)", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
-          <ScoreRing score={inst.partner_fit_score} size={64} />
+          <ScoreRing score={inst.partner_fit_score} size={64}
+            part={focusKey ? { value: inst.score_breakdown?.[focusKey] ?? 0, max: SCORE_MAX[focusKey] } : null} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 className="section-title" style={{ marginBottom: "var(--sp-2)" }}>
               {inst.name}
@@ -72,7 +75,8 @@ export default function InstitutionProfile({ id, topicId, onBack }) {
         </div>
 
         <div className="divider" />
-        <ScoreCard score={inst.partner_fit_score} breakdown={inst.score_breakdown} />
+        <ScoreCard score={inst.partner_fit_score} breakdown={inst.score_breakdown}
+          focusKey={focusKey} onFocusKey={setFocusKey} />
 
         {/* Transparency: how the six weighted dimensions sum to the score.
             Collapsed by default; native <details> so it works without JS. */}

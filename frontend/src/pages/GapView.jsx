@@ -7,6 +7,8 @@ import { ASSOCIATED_LIST_URL, checkEligibility, countryName, isWidening } from "
 import { track } from "../analytics";
 import SuggestedPartners from "../components/SuggestedPartners";
 import TiesMatrix from "../components/TiesMatrix";
+import CopyButton from "../components/CopyButton";
+import Segmented from "../components/Segmented";
 
 // Roles are inferred from each organisation's ROR type — what kind of organisation
 // it is, not what it would do in a project. The UI says so; the mapping is the
@@ -49,7 +51,7 @@ function RoleGrid({ institutions, isConsortium }) {
         return (
           <div className="gap-card" key={role.key}>
             <div className="gap-card-title">{role.label}</div>
-            <div className={`gap-card-status gap-${v.level}`}>{v.label} <Icon name={v.glyph} size={16} /></div>
+            <div className={`gap-card-status gap-${v.level}`}>{v.label} <Icon key={v.glyph} name={v.glyph} size={16} draw /></div>
             <div className="muted gap-card-count">
               {plural(role.count, "institution", "institutions")}
               {isConsortium ? " in your consortium" : " in this network"}
@@ -68,13 +70,13 @@ function EligibilityCard({ consortium }) {
       <div className="gap-panel-head">
         <h3 id="elig-h" className="eyebrow">Horizon eligibility check</h3>
         <span className={`gap-verdict ${ok ? "gap-strong" : "gap-weak"}`}>
-          {ok ? "Meets the minimum" : "Not yet"} <Icon name={ok ? "check" : "alert"} size={16} />
+          {ok ? "Meets the minimum" : "Not yet"} <Icon key={ok ? "ok" : "no"} name={ok ? "check" : "alert"} size={16} draw={ok} />
         </span>
       </div>
       <ul className="check-list">
         {checks.map((c) => (
           <li key={c.key} className={c.ok ? "is-ok" : "is-missing"}>
-            <Icon name={c.ok ? "check" : "close"} size={16} />
+            <Icon key={c.ok ? "ok" : "no"} name={c.ok ? "check" : "close"} size={16} draw />
             <span className="sr-only">{c.ok ? "Met:" : "Not met:"}</span>
             <span>{c.label}</span>
             <span className="muted check-detail">{c.detail}</span>
@@ -122,8 +124,8 @@ function BenchmarkCard({ topicId, countries, isConsortium }) {
           </p>
           {isConsortium && (
             <div className="bench-bars" aria-hidden="true">
-              <div className="bench-row"><span>Typical</span><div className="bench-track"><div className="bench-range" style={{ left: pct(bm.p25_countries), width: `calc(${pct(bm.p75_countries)} - ${pct(bm.p25_countries)})` }} /><div className="bench-mark" style={{ left: pct(bm.median_countries) }} /></div></div>
-              <div className="bench-row"><span>Yours</span><div className="bench-track"><div className="bench-fill" style={{ width: pct(mine) }} /></div><b>{mine}</b></div>
+              <div className="bench-row"><span>Typical</span><div className="bench-track"><div className="bench-range grow-x" style={{ left: pct(bm.p25_countries), width: `calc(${pct(bm.p75_countries)} - ${pct(bm.p25_countries)})` }} /><div className="bench-mark rise-in" style={{ left: pct(bm.median_countries) }} /></div></div>
+              <div className="bench-row"><span>Yours</span><div className="bench-track"><div className="bench-fill grow-x" style={{ width: pct(mine), "--i": 3 }} /></div><b>{mine}</b></div>
             </div>
           )}
           {Object.keys(bm.coordinator_types).length > 0 && (
@@ -187,7 +189,7 @@ export default function GapView({ topicId, consortium = [], onClearConsortium, o
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopied(false), 2000);
       track("consortium_shared", { topic: topicId, size: consortium.length });
     } catch {
       window.prompt("Copy this link", url);
@@ -229,19 +231,16 @@ export default function GapView({ topicId, consortium = [], onClearConsortium, o
   return (
     <div>
       <div className="gap-toolbar">
-        <div className="segmented">
-          {["network", "consortium"].map(m => (
-            <button key={m} className="segmented-btn" onClick={() => setMode(m)} aria-pressed={mode === m}>
-              {m === "network" ? "Full network" : `My consortium${consortium.length ? ` (${consortium.length})` : ""}`}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Show roles for"
+          value={mode}
+          onChange={setMode}
+          options={[["network", "Full network"], ["consortium", `My consortium${consortium.length ? ` (${consortium.length})` : ""}`]]}
+        />
         <p className="muted" style={{ margin: 0 }} role="status" aria-live="polite">{label}</p>
         {isConsortium && consortium.length > 0 && (
           <div className="gap-toolbar-actions">
-            <button className="btn btn-secondary btn-sm" onClick={copyShareLink}>
-              <Icon name={copied ? "check" : "copy"} size={14} /> {copied ? "Link copied" : "Copy share link"}
-            </button>
+            <CopyButton copied={copied} onClick={copyShareLink} idle="Copy share link" done="Link copied" />
             {onClearConsortium && <button className="btn btn-ghost btn-sm" onClick={onClearConsortium}>Clear</button>}
           </div>
         )}

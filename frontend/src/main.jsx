@@ -2,6 +2,10 @@ import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { hydrateRoot } from "react-dom/client";
 import "./styles.css";
+// The landing is prerendered into index.html, so its styles must arrive with the
+// first paint, not with the lazily loaded Landing chunk: that left the hero
+// unstyled for ~0.5 s and then jumped (CLS 0.18).
+import "./pages/landing.css";
 
 // A deploy swaps the hashed chunks; a tab opened before it then fails to load a
 // lazy chunk (404). Reload once to pick up the new build instead of a blank page.

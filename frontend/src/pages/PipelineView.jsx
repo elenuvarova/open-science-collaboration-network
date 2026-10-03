@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import RollingNumber from "../components/RollingNumber";
 import TypeBadge from "../components/TypeBadge";
 import EmptyState from "../components/EmptyState";
 import Icon from "../components/Icon";
@@ -71,14 +73,16 @@ function LockChip({ call, lock, topicId }) {
   );
 }
 
-function PartnerCard({ inst, entry, draggable, onChange, onDraft, onCard, onDragStart, onDragEnd }) {
+function PartnerCard({ inst, entry, draggable, dragging, onChange, onDraft, onCard, onDragStart, onDragEnd }) {
   const { status, checks, note, updatedAt } = entry;
   const done = CHECKS.filter((c) => checks[c.id]).length;
   const id = inst.id;
 
   return (
     <li>
-      <article className="card pipeline-card" data-card-id={id} aria-labelledby={`pc-name-${id}`}>
+      {/* The name lets a status change morph the card from its old column to the new one. */}
+      <article className={`card pipeline-card${dragging ? " is-dragging" : ""}`} data-card-id={id} aria-labelledby={`pc-name-${id}`}
+        style={{ viewTransitionName: `pipeline-card-${id}` }}>
         {/* Dragging is an extra for mouse users; the Status menu below is the way to move a card. */}
         <header className="pipeline-card-head" draggable={draggable} onDragStart={(e) => onDragStart(e, id)} onDragEnd={onDragEnd}>
           <h4 id={`pc-name-${id}`} className="pipeline-card-name">{inst.name}</h4>
@@ -106,13 +110,16 @@ function PartnerCard({ inst, entry, draggable, onChange, onDraft, onCard, onDrag
             <span className="sr-only"> for {inst.name}</span>
           </legend>
           {CHECKS.map((c) => (
-            <label key={c.id} className="pipeline-check">
-              <input
-                type="checkbox"
-                checked={checks[c.id]}
-                onChange={(e) => onChange(inst, { checks: { [c.id]: e.target.checked } })}
-              />
-              <span>{c.label}</span>
+            <label key={c.id} className={`pipeline-check${checks[c.id] ? " is-done" : ""}`}>
+              <span className="check-box">
+                <input
+                  type="checkbox"
+                  checked={checks[c.id]}
+                  onChange={(e) => onChange(inst, { checks: { [c.id]: e.target.checked } })}
+                />
+                {checks[c.id] && <Icon name="check" size={12} strokeWidth={2.6} draw className="check-box-tick" />}
+              </span>
+              <span className="pipeline-check-label">{c.label}</span>
             </label>
           ))}
         </fieldset>
@@ -171,10 +178,19 @@ export default function PipelineView({ topicId, topicName, consortium = [], acti
 
   function moveTo(inst, status, focusSelector) {
     if (pipeline.get(inst.id).status === status) return;
-    pipeline.set(inst.id, { status });
+    // The card travels to its new column (View Transitions; an instant move where
+    // unsupported or when the user asks for less motion).
+    // Focus target and announcement go in the same update as the move, so focus is
+    // restored after the card has landed in its new column, not before.
+    const update = () => {
+      if (focusSelector) focusAfter.current = { id: inst.id, selector: focusSelector };
+      pipeline.set(inst.id, { status });
+      setAnnouncement(`${inst.name} moved to ${statusLabel(status)}.`);
+    };
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (document.startViewTransition && !calm) document.startViewTransition(() => flushSync(update));
+    else update();
     track("pipeline_status_changed", { topic: topicId, status });
-    setAnnouncement(`${inst.name} moved to ${statusLabel(status)}.`);
-    if (focusSelector) focusAfter.current = { id: inst.id, selector: focusSelector };
   }
 
   // Cards report every change here; status changes are tracked, notes never are.
@@ -235,7 +251,7 @@ export default function PipelineView({ topicId, topicName, consortium = [], acti
           {STATUSES.map((s) => (
             <li key={s.id} className="pipeline-count">
               <span>{s.label}</span>
-              <strong>{byStatus[s.id].length}</strong>
+              <strong><RollingNumber value={byStatus[s.id].length} /></strong>
             </li>
           ))}
         </ul>
@@ -260,7 +276,7 @@ export default function PipelineView({ topicId, topicName, consortium = [], acti
               onDrop={(e) => onDrop(e, s.id)}
             >
               <h3 id={`pcol-${s.id}`} className="pipeline-col-title">
-                {s.label} <span className="pipeline-col-count">{list.length}</span>
+                {s.label} <span className="pipeline-col-count"><RollingNumber value={list.length} /></span>
               </h3>
               {list.length === 0 && <p className="muted pipeline-col-empty">No partners here</p>}
               <ul className="pipeline-cards">
@@ -270,6 +286,7 @@ export default function PipelineView({ topicId, topicName, consortium = [], acti
                     inst={inst}
                     entry={pipeline.get(inst.id)}
                     draggable={dragEnabled}
+                    dragging={dragId === inst.id}
                     onChange={onChange}
                     onDraft={(i) => setDialog({ kind: "draft", inst: i })}
                     onCard={(i) => setDialog({ kind: "card", inst: i })}

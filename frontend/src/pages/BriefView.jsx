@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { getBrief } from "../api";
 import { track } from "../analytics";
+import CopyButton from "../components/CopyButton";
 
-function CopyButton({ text }) {
+function CopyBrief({ text }) {
   const [copied, setCopied] = useState(false);
   function copy() {
     navigator.clipboard.writeText(text).then(() => {
@@ -11,11 +12,7 @@ function CopyButton({ text }) {
       setTimeout(() => setCopied(false), 2000);
     });
   }
-  return (
-    <button className="btn btn-secondary btn-sm" onClick={copy}>
-      <span role="status" aria-live="polite">{copied ? "Copied!" : "Copy brief"}</span>
-    </button>
-  );
+  return <CopyButton copied={copied} onClick={copy} idle="Copy brief" done="Copied" />;
 }
 
 // Inline Markdown → React (no innerHTML): **bold** and *italic* only.
@@ -123,7 +120,7 @@ export default function BriefView({ topicId }) {
             <> · {new Date(brief.generated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</>
           )}
         </p>
-        <CopyButton text={brief.text} />
+        <CopyBrief text={brief.text} />
       </div>
 
       <div className="card">

@@ -30,7 +30,14 @@
   font-family: var(--font-display); font-variation-settings: var(--display-axes); font-weight: 400;
   font-size: clamp(44px, 6.4vw, 84px); line-height: 1.02; letter-spacing: -0.03em; text-wrap: balance;
 }
-.lp-h1 mark { background: var(--mark); color: var(--text-1); padding: 0 0.12em; border-radius: 4px; }
+/* The lime highlighter is drawn under "partners" once, left to right. */
+.lp-h1 mark {
+  background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 0 / 0% 100%;
+  color: var(--text-1); padding: 0 0.12em; border-radius: 4px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  animation: lp-mark 700ms var(--ease-out) 350ms forwards;
+}
+@keyframes lp-mark { to { background-size: 100% 100%; } }
 .lp-lead { font-size: clamp(18px, 1.6vw, 22px); line-height: 1.45; color: var(--text-2); max-width: 34em; margin: var(--sp-6) 0 var(--sp-8); }
 .lp-ctas { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
 .lp-topics { list-style: none; display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-6); }
@@ -42,11 +49,28 @@
 .lp-topics a:hover { border-color: var(--text-1); }
 
 .lp-constellation { width: 100%; height: auto; max-width: 560px; justify-self: end; }
-.lp-edge { stroke: var(--border); stroke-width: 1; }
-.lp-pair { stroke: var(--pair); stroke-width: 3; stroke-linecap: round; }
-.lp-bead { stroke: var(--text-1); stroke-width: 1.5; animation: lp-pop 600ms cubic-bezier(.2,.8,.2,1) both; transform-box: fill-box; transform-origin: center; }
-.lp-ring { fill: none; stroke: var(--text-1); stroke-width: 1.5; }
+/* The constellation assembles once: threads draw out from the hubs (pathLength 1),
+   beads land as their thread arrives, then the red pair line joins two hubs.
+   Under reduced motion everything is simply there (global block in styles.css). */
+.lp-edge {
+  stroke: var(--border); stroke-width: 1;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: lp-draw 700ms var(--ease-draw) forwards; animation-delay: var(--d, 0ms);
+}
+.lp-pair {
+  stroke: var(--pair); stroke-width: 3; stroke-linecap: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: lp-draw 600ms var(--ease-out) 1100ms forwards;
+}
+.lp-bead {
+  stroke: var(--text-1); stroke-width: 1.5;
+  animation: lp-pop 450ms var(--ease-out) both; animation-delay: var(--d, 0ms);
+  transform-box: fill-box; transform-origin: center;
+}
+.lp-ring { fill: none; stroke: var(--text-1); stroke-width: 1.5; animation: lp-fade 400ms var(--ease-out) 1300ms both; }
+@keyframes lp-draw { to { stroke-dashoffset: 0; } }
 @keyframes lp-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes lp-fade { from { opacity: 0; } }
 
 .lp-band {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-6);
@@ -114,3 +138,44 @@
   .lp-row-score { min-width: 44px; font-size: 18px; }
 }
 .lp-footer a { color: var(--text-2); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Numbers band: digits roll into place once (Odometer). Each digit is a window
+   one line tall onto a 0–9 strip; --n picks the digit, --k staggers them. */
+.lp-band-value { font-variant-numeric: tabular-nums; }
+.odo-figures { display: inline-flex; }
+.odo-digit { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; }
+.odo-strip { display: flex; flex-direction: column; transform: translateY(calc(var(--n) * -10%)); }
+.odo-strip > span { height: 1.1em; line-height: 1.1; }
+.odo[data-phase="run"] .odo-strip {
+  transition: transform 1000ms var(--ease-out);
+  transition-delay: calc(var(--k) * 60ms);
+}
+
+/* How it works: a thread joins the three steps, spun out as the section scrolls in. */
+.lp-steps { position: relative; isolation: isolate; }
+.lp-steps::before {
+  content: ""; position: absolute; z-index: -1;
+  left: 16%; right: 16%; top: calc(var(--sp-8) + 24px); height: 1.5px;
+  background: var(--text-1); transform-origin: left center;
+}
+@media (max-width: 720px) { .lp-steps::before { display: none; } }
+
+/* Sections rise a little as they scroll in — only where the browser drives this
+   from scroll (no JS) and the user hasn't asked for less motion. Elsewhere the
+   content is simply there. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .lp-reveal {
+      animation: lp-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+    .lp-steps::before {
+      animation: lp-thread linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 50%;
+    }
+  }
+}
+@keyframes lp-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes lp-thread { from { transform: scaleX(0); } }

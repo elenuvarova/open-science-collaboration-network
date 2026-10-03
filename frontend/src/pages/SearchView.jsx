@@ -6,7 +6,7 @@ import { track } from "../analytics";
 // Always a doi.org link, whatever the field holds.
 const doiUrl = (doi) => `https://doi.org/${String(doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}`;
 
-function SimilarityBar({ value }) {
+function SimilarityBar({ value, i = 0 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
       <div style={{
@@ -16,7 +16,8 @@ function SimilarityBar({ value }) {
         overflow: "hidden",
         maxWidth: 80,
       }}>
-        <div style={{
+        <div className="grow-x" style={{
+          "--i": Math.min(i, 8),
           height: "100%",
           width: `${Math.round(value * 100)}%`,
           background: "var(--accent)",
@@ -138,7 +139,7 @@ export default function SearchView({ topicId }) {
         </div>
       )}
 
-      {!loading && results.map((r) => (
+      {!loading && results.map((r, i) => (
         <div key={r.id} className="card" style={{ marginBottom: "var(--sp-3)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--sp-3)" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -165,7 +166,7 @@ export default function SearchView({ topicId }) {
               )}
             </div>
             <div style={{ flexShrink: 0, width: 100 }}>
-              <SimilarityBar value={r.similarity} />
+              <SimilarityBar value={r.similarity} i={i} />
             </div>
           </div>
         </div>

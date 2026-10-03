@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, m } from "motion/react";
 import { track } from "../analytics";
 import Icon from "./Icon";
 
@@ -27,6 +28,9 @@ const STEPS = [
 
 export default function Tour({ onClose }) {
   const [step, setStep] = useState(0);
+  // Which way the content slides: forward from the right, back from the left.
+  const [dir, setDir] = useState(1);
+  const go = (next) => { setDir(next > step ? 1 : -1); setStep(next); };
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
   const dialogRef = useRef(null);
@@ -80,55 +84,65 @@ export default function Tour({ onClose }) {
   }
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "var(--scrim)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: "var(--z-modal)", padding: "var(--sp-4)",
-    }}>
-      <div
+    <m.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+      style={{
+        position: "fixed", inset: 0, background: "var(--scrim)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: "var(--z-modal)", padding: "var(--sp-4)",
+      }}>
+      <m.div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="tour-title"
         tabIndex={-1}
         onKeyDown={onKeyDown}
+        initial={{ opacity: 0, scale: 0.98, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
         style={{
           background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-xl)", width: "100%", maxWidth: 480,
-          padding: "var(--sp-8)", position: "relative",
+          padding: "var(--sp-8)", position: "relative", overflow: "hidden",
         }}
       >
-        {/* Progress dots */}
-        <div style={{ display: "flex", gap: "var(--sp-2)", marginBottom: "var(--sp-6)", justifyContent: "center" }}>
-          {STEPS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setStep(i)}
-              aria-label={`Go to step ${i + 1} of ${STEPS.length}`}
-              aria-current={i === step ? "step" : undefined}
-              style={{
-                width: i === step ? 20 : 8, height: 8, borderRadius: "var(--r-full)", padding: 0,
-                border: "none", background: i === step ? "var(--accent)" : "var(--border)",
-                transition: "width var(--dur-slow), background var(--dur-slow)", cursor: "pointer",
-              }}
-            />
-          ))}
+        {/* Progress: a counter, as well-made product tours do, plus a thin bar. */}
+        <div className="tour-progress">
+          <p className="tour-step" aria-live="polite">
+            Step {step + 1} of {STEPS.length}<span className="sr-only">: {current.title}</span>
+          </p>
+          <div className="tour-track" aria-hidden="true">
+            <div className="tour-fill" style={{ transform: `scaleX(${(step + 1) / STEPS.length})` }} />
+          </div>
         </div>
 
-        <div aria-hidden="true" style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)", textAlign: "center" }}>{current.img}</div>
-        <h2 id="tour-title" style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--w-bold)", marginBottom: "var(--sp-3)", lineHeight: "var(--leading-snug)", textAlign: "center" }}>
-          {current.title}
-        </h2>
-        <p className="body-text" style={{ color: "var(--text-3)", marginBottom: "var(--sp-8)", textAlign: "center" }}>
-          {current.body}
-        </p>
+        <AnimatePresence mode="wait" initial={false} custom={dir}>
+          <m.div
+            key={step}
+            custom={dir}
+            initial={{ opacity: 0, x: dir * 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: dir * -16, transition: { duration: 0.12 } }}
+          >
+            <div aria-hidden="true" style={{ fontSize: "var(--text-3xl)", marginBottom: "var(--sp-4)", textAlign: "center" }}>{current.img}</div>
+            <h2 id="tour-title" style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--w-bold)", marginBottom: "var(--sp-3)", lineHeight: "var(--leading-snug)", textAlign: "center" }}>
+              {current.title}
+            </h2>
+            <p className="body-text" style={{ color: "var(--text-3)", marginBottom: "var(--sp-8)", textAlign: "center" }}>
+              {current.body}
+            </p>
+          </m.div>
+        </AnimatePresence>
 
         <div style={{ display: "flex", gap: "var(--sp-3)", justifyContent: "center" }}>
           {step > 0 && (
-            <button className="btn btn-secondary" onClick={() => setStep(s => s - 1)}>Back</button>
+            <button className="btn btn-secondary" onClick={() => go(step - 1)}>Back</button>
           )}
           {!isLast && (
-            <button className="btn btn-primary" onClick={() => setStep(s => s + 1)}>Next</button>
+            <button className="btn btn-primary" onClick={() => go(step + 1)}>Next</button>
           )}
           {isLast && (
             <button className="btn btn-primary" onClick={finish}>Get started</button>
@@ -141,7 +155,7 @@ export default function Tour({ onClose }) {
           aria-label="Close tour"
           style={{ position: "absolute", top: "var(--sp-4)", right: "var(--sp-4)" }}
         ><Icon name="close" size={14} /></button>
-      </div>
-    </div>
+      </m.div>
+    </m.div>
   );
 }

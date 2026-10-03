@@ -4,6 +4,10 @@ import Shortlist from "./pages/Shortlist";
 import GapView from "./pages/GapView";
 import DeadlineBanner from "./components/DeadlineBanner";
 import Tour from "./components/Tour";
+import RollingNumber from "./components/RollingNumber";
+import useSlidingIndicator from "./hooks/useSlidingIndicator";
+import MotionProvider from "./motion/MotionProvider";
+import { AnimatePresence, m } from "motion/react";
 import Icon from "./components/Icon";
 import { track } from "./analytics";
 
@@ -256,21 +260,35 @@ export default function App() {
     }
   }, [page, topicId, profileId, compare]);
 
+  // The active tab's pill slides between tabs; on the narrow, scrolling tab strip
+  // the active tab is also brought into view.
+  const navRef = useRef(null);
+  useSlidingIndicator(navRef, page);
+  useEffect(() => {
+    navRef.current?.querySelector('[data-active="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [page]);
+
   // The map and the pipeline board want the full width (six columns).
   const isWide = page === "network" || page === "pipeline";
 
   return (
+    <MotionProvider>
     <div className="layout">
-      {showTour && <Tour onClose={() => setShowTour(false)} />}
+      <AnimatePresence>
+        {showTour && <Tour key="tour" onClose={() => setShowTour(false)} />}
+      </AnimatePresence>
 
       <header className="topbar">
         <h1 className="topbar-title"><a className="brand" href="/" aria-label="noda — home"><span className="brand-dots" aria-hidden="true"><i /><i /><i /></span><span className="brand-word">noda</span></a></h1>
 
-        <nav>
+        <nav ref={navRef} className="has-indicator">
+          <span className="indicator" aria-hidden="true" />
           {PAGES.map((p) => (
             <button
               key={p.id}
               className={`nav-btn ${page === p.id ? "active" : ""}`}
+              data-active={page === p.id}
               aria-current={page === p.id ? "page" : undefined}
               aria-label={p.id === "gaps" && consortium.length > 0
                 ? `${p.label}, ${consortium.length} selected`
@@ -279,7 +297,7 @@ export default function App() {
             >
               {p.label}
               {p.id === "gaps" && consortium.length > 0 && (
-                <span className="nav-badge" aria-hidden="true">{consortium.length}</span>
+                <span className="nav-badge" aria-hidden="true"><RollingNumber value={consortium.length} /></span>
               )}
             </button>
           ))}
@@ -322,13 +340,18 @@ export default function App() {
 
       <main key={page} className={`fade-in ${isWide ? "page-wide" : "page"}`}>
         <h2 className="sr-only" tabIndex={-1} ref={headingRef}>{pageLabel}</h2>
-        {sharedNotice && (
-          <div className="notice" role="status">
-            <Icon name="check" size={16} /> <span>{sharedNotice}</span>
-            {sharedUndo && <button className="btn btn-secondary btn-sm" onClick={sharedUndo}>Undo — restore my consortium</button>}
-            <button className="btn btn-ghost btn-sm" onClick={() => setSharedNotice(null)}>Dismiss</button>
-          </div>
-        )}
+        <AnimatePresence>
+          {sharedNotice && (
+            <m.div key="shared" className="notice" role="status"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
+              <Icon name="check" size={16} draw /> <span>{sharedNotice}</span>
+              {sharedUndo && <button className="btn btn-secondary btn-sm" onClick={sharedUndo}>Undo — restore my consortium</button>}
+              <button className="btn btn-ghost btn-sm" onClick={() => setSharedNotice(null)}>Dismiss</button>
+            </m.div>
+          )}
+        </AnimatePresence>
         {!topicId && !topicsError && <div className="spinner" role="status" aria-live="polite">Loading topics…</div>}
         {!topicId && topicsError && (
           <div className="card" role="alert" style={{ textAlign: "center", padding: "var(--sp-8)", maxWidth: 440, margin: "var(--sp-10) auto 0" }}>
@@ -368,5 +391,6 @@ export default function App() {
         </Suspense>
       </main>
     </div>
+    </MotionProvider>
   );
 }

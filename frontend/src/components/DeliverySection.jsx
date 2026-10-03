@@ -114,7 +114,7 @@ function DeliveryBody({ data, topicId }) {
       ) : (
         <>
           {/* The bar is a visual summary only; the labelled list below carries every number. */}
-          <div className="delivery-bar" aria-hidden="true">
+          <div className="delivery-bar grow-x" aria-hidden="true">
             {TYPES.filter((t) => totals[t.key] > 0).map((t) => (
               <span key={t.key} className={`delivery-seg seg-${t.key}`} style={{ flexGrow: totals[t.key] }} />
             ))}

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getTopics, getInstitutions, getMeta } from "../api";
 import Icon from "../components/Icon";
 import TypeBadge from "../components/TypeBadge";
+import Odometer from "../components/Odometer";
 import { track } from "../analytics";
-import "./landing.css";
 
 // Shown until the API answers (and if it never does) — real values from Oct 2026.
 const FALLBACK_TOPICS = [
@@ -36,7 +36,7 @@ const SOURCES = [
 const appLink = (topicId) => (topicId ? `/app#/shortlist/${topicId}` : "/app");
 
 // Prerendered with these, then replaced by live totals from /api/meta.
-const FALLBACK_META = { topics: 6, institutions: 9300, edges: 800000 };
+const FALLBACK_META = { topics: 6, institutions: 9431, edges: 860000 };
 
 function compact(n) {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
@@ -107,7 +107,7 @@ export default function Landing() {
 
         <section className="lp-band" aria-label="noda in numbers">
           {[[String(meta.topics), "research topics"], [compact(meta.institutions), "institutions scored"], [compact(meta.edges), "collaboration links"], ["weekly", "refresh from OpenAlex + CORDIS"]].map(([v, l]) => (
-            <div key={l}><p className="lp-band-value">{v}</p><p>{l}</p></div>
+            <div key={l} className="lp-reveal"><p className="lp-band-value"><Odometer value={v} /></p><p>{l}</p></div>
           ))}
         </section>
 
@@ -115,7 +115,7 @@ export default function Landing() {
           <h2 id="how-h" className="lp-h2">How it works</h2>
           <ol className="lp-steps">
             {STEPS.map((s) => (
-              <li key={s.n} className="lp-step">
+              <li key={s.n} className="lp-step lp-reveal">
                 <div className="lp-step-top">
                   <span className="lp-step-n" aria-hidden="true">{s.n}</span>
                   <span className={`lp-step-icon type-${s.kind}`}><Icon name={s.icon} size={22} /></span>
@@ -128,7 +128,7 @@ export default function Landing() {
         </section>
 
         <section className="lp-section lp-preview" aria-labelledby="prev-h">
-          <div className="lp-preview-copy">
+          <div className="lp-preview-copy lp-reveal">
             <h2 id="prev-h" className="lp-h2">A shortlist you can defend</h2>
             <p>
               Every score breaks down into its parts, so you can explain to a coordinator why a partner
@@ -136,7 +136,7 @@ export default function Landing() {
             </p>
             <a className="lp-btn lp-btn-primary" href={appLink(climate?.id)} onClick={() => track("landing_cta", { where: "preview" })}>Open the shortlist</a>
           </div>
-          <ol className="lp-rows" aria-label={`Top partners for ${climate?.name || "climate adaptation"}`}>
+          <ol className="lp-rows lp-reveal" aria-label={`Top partners for ${climate?.name || "climate adaptation"}`}>
             {rows.map((r, i) => (
               <li key={r.id || r.name} className="lp-row">
                 <span className="lp-row-rank">{i + 1}</span>
@@ -157,7 +157,7 @@ export default function Landing() {
           <h2 id="data-h" className="lp-h2">Built on open data</h2>
           <ul>
             {SOURCES.map((s) => (
-              <li key={s.name}>
+              <li key={s.name} className="lp-reveal">
                 <h3>{s.name} <span className="lp-licence">{s.licence}</span></h3>
                 <p>{s.body}</p>
               </li>
@@ -165,7 +165,7 @@ export default function Landing() {
           </ul>
         </section>
 
-        <section className="lp-final">
+        <section className="lp-final lp-reveal">
           <h2 className="lp-h1">Start with your topic</h2>
           <a className="lp-btn lp-btn-primary" href="/app" onClick={() => track("landing_cta", { where: "final" })}>Open the app</a>
         </section>
@@ -200,12 +200,18 @@ function Constellation() {
     return { nodes, edges, hubs };
   }, []);
   const fill = (k) => `var(--type-${k}-bg)`;
+  // One wave from the first hub: hubs appear, threads draw outward from them, and
+  // each bead lands as its thread arrives. Delays grow with distance from the seed.
+  const [sx, sy] = hubs[0];
+  const wave = (x, y) => Math.round(Math.hypot(x - sx, y - sy) * 1.6);
   return (
     <svg className="lp-constellation" viewBox="0 0 560 560" aria-hidden="true" focusable="false">
-      {edges.map(([x1, y1, x2, y2], i) => <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="lp-edge" />)}
-      <line x1={hubs[0][0]} y1={hubs[0][1]} x2={hubs[1][0]} y2={hubs[1][1]} className="lp-pair" />
-      {nodes.map((n, i) => <circle key={i} cx={n.x} cy={n.y} r={n.r} fill={fill(n.kind)} className="lp-bead" style={{ animationDelay: `${(i % 11) * 60}ms` }} />)}
-      {hubs.map(([x, y, k], i) => <circle key={`h${i}`} cx={x} cy={y} r={20} fill={fill(k)} className="lp-bead" />)}
+      {edges.map(([x1, y1, x2, y2], i) => (
+        <line key={i} x1={x2} y1={y2} x2={x1} y2={y1} pathLength={1} className="lp-edge" style={{ "--d": `${wave(x2, y2) + 150}ms` }} />
+      ))}
+      <line x1={hubs[0][0]} y1={hubs[0][1]} x2={hubs[1][0]} y2={hubs[1][1]} pathLength={1} className="lp-pair" />
+      {nodes.map((n, i) => <circle key={i} cx={n.x} cy={n.y} r={n.r} fill={fill(n.kind)} className="lp-bead" style={{ "--d": `${wave(n.x, n.y) + 450}ms` }} />)}
+      {hubs.map(([x, y, k], i) => <circle key={`h${i}`} cx={x} cy={y} r={20} fill={fill(k)} className="lp-bead" style={{ "--d": `${wave(x, y)}ms` }} />)}
       {[hubs[0], hubs[1]].map(([x, y], i) => <circle key={`r${i}`} cx={x} cy={y} r={30} className="lp-ring" />)}
     </svg>
   );

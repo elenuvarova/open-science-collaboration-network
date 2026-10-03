@@ -168,14 +168,10 @@
   color: var(--text-1);
   cursor: pointer;
 }
-.pipeline-check input {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--text-1);
-  cursor: pointer;
-}
+.pipeline-check { --cb: 18px; }
+.pipeline-check-label { transition: color var(--dur-ui) var(--ease-out); }
+/* A done item steps back (text-3 keeps AA contrast); no strike-through. */
+.pipeline-check.is-done .pipeline-check-label { color: var(--text-3); }
 
 .pipeline-note {
   width: 100%;
@@ -196,5 +192,13 @@
 
 @media (hover: none) {
   .pipeline-check { min-height: 44px; align-items: center; }
-  .pipeline-check input { width: 22px; height: 22px; }
+  .pipeline-check { --cb: 22px; }
 }
+
+/* Dragging: the card left behind is a quiet placeholder, no tilt; the column
+   under the pointer is already highlighted (.is-over). */
+.pipeline-card { transition: opacity var(--dur-ui) var(--ease-out); }
+.pipeline-card.is-dragging { opacity: 0.4; outline: 1px dashed var(--border); outline-offset: -1px; }
+
+/* A card changing column morphs from its old place to its new one. */
+::view-transition-group(*) { animation-duration: var(--dur-move); animation-timing-function: var(--ease-out); }

@@ -9,9 +9,14 @@ function ringColor(score) {
   return "var(--text-3)";
 }
 
-export default function ScoreRing({ score, size = SIZE }) {
+// `part` ({ value, max }) temporarily shows one component of the score (the
+// profile's breakdown row under the pointer): the arc and the number move to it.
+// The accessible name always states the overall score.
+export default function ScoreRing({ score, size = SIZE, part = null }) {
   const scale = size / SIZE;
-  const offset = CIRC * (1 - Math.min(score, 100) / 100);
+  const fraction = part ? Math.min(part.value / part.max, 1) : Math.min(score, 100) / 100;
+  const offset = CIRC * (1 - fraction);
+  const color = part ? "var(--accent)" : ringColor(score);
 
   return (
     <div
@@ -30,12 +35,14 @@ export default function ScoreRing({ score, size = SIZE }) {
         <circle
           cx={SIZE / 2 * scale} cy={SIZE / 2 * scale}
           r={R * scale} fill="none"
-          stroke={ringColor(score)}
+          className="ring-progress"
+          stroke={color}
           strokeWidth={STROKE * scale}
           strokeDasharray={`${CIRC * scale} ${CIRC * scale}`}
           strokeDashoffset={offset * scale}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset var(--dur-data) ease, stroke var(--dur-slow)" }}
+          // Fills from empty once on mount (.ring-progress), then follows changes.
+          style={{ "--ring-from": `${CIRC * scale}px` }}
         />
       </svg>
       <div aria-hidden="true" style={{
@@ -47,13 +54,14 @@ export default function ScoreRing({ score, size = SIZE }) {
         <span style={{
           fontSize: size < 56 ? "var(--text-sm)" : "var(--text-base)",
           fontWeight: "var(--w-bold)",
-          color: ringColor(score),
+          color,
           lineHeight: 1,
           fontVariantNumeric: "tabular-nums",
+          transition: "color var(--dur-ui)",
         }}>
-          {Math.round(score)}
+          {part ? part.value.toFixed(1) : Math.round(score)}
         </span>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: 1.2 }}>/ 100</span>
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-3)", lineHeight: 1.2 }}>/ {part ? part.max : 100}</span>
       </div>
     </div>
   );
