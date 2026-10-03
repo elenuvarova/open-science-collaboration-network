@@ -1,10 +1,11 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
 from models import Institution, InstitutionMetric
+from ratelimit import limiter
 from schemas import InstitutionScored
 from params import InstType, InstitutionId, OptTopicId
 
@@ -26,8 +27,11 @@ def _scored(inst: Institution, metric: Optional[InstitutionMetric]) -> Instituti
     )
 
 
+# Generous limits: a shared consortium link loads up to 30 profiles at once.
 @router.get("", response_model=list[InstitutionScored])
+@limiter.limit("120/minute")
 def list_institutions(
+    request: Request,
     topic: OptTopicId = None,
     country: Optional[str] = Query(None, pattern=r"^[A-Za-z]{2}$"),
     countries: Optional[str] = Query(None, max_length=300, pattern=r"^[A-Za-z, ]*$",
@@ -56,7 +60,9 @@ def list_institutions(
 
 
 @router.get("/{institution_id}", response_model=InstitutionScored)
+@limiter.limit("120/minute")
 def get_institution(
+    request: Request,
     institution_id: InstitutionId,
     topic: OptTopicId = None,
     db: Session = Depends(get_db),

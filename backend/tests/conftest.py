@@ -16,5 +16,7 @@ import pytest  # noqa: E402
 def _fresh_on_topic_cache():
     # Test modules each seed their own DB; never serve one module's ids to another.
     from topic_match import clear_on_topic_cache
+    from routers.graph import graph_cache
     clear_on_topic_cache()
+    graph_cache.clear()
     yield

@@ -8,8 +8,13 @@ from models import CollaborationEdge, Institution, InstitutionMetric
 from ratelimit import limiter
 from schemas import GraphEdge, GraphNode, GraphOut
 from params import InstType, OptTopicId
+from ttl_cache import TTLCache
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
+
+# The graph only changes with the weekly ETL, and a 150-node build is ~0.5 s of
+# database work: keep each (topic, type, limit) for 6 h.
+graph_cache = TTLCache(ttl=6 * 3600, max_items=64)
 
 
 @router.get("", response_model=GraphOut)
@@ -21,6 +26,10 @@ def get_graph(
     limit: int = Query(150, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
+    return graph_cache.get_or_build((topic, type, limit), lambda: _build_graph(db, topic, type, limit))
+
+
+def _build_graph(db: Session, topic, type, limit) -> GraphOut:
     iq = (
         db.query(Institution, InstitutionMetric)
         .outerjoin(InstitutionMetric, InstitutionMetric.institution_id == Institution.id)

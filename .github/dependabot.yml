@@ -1,0 +1,30 @@
+# Dependabot: security fixes are on in the repo settings; this file adds a weekly,
+# grouped check for routine updates. Pull requests only — Coolify deploys pushes
+# to main, so nothing here reaches production until it is reviewed and merged.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly, day: tuesday }
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: pip
+    directory: /backend
+    schedule: { interval: weekly, day: tuesday }
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: pip
+    directory: /etl
+    schedule: { interval: weekly, day: tuesday }
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly, day: tuesday }
+    open-pull-requests-limit: 2
