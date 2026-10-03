@@ -215,6 +215,9 @@ a:hover { color: var(--accent-h); }
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* Dialogs take focus on open so screen readers start inside them. The container
+   isn't a control, so no ring around the whole dialog; the controls inside keep theirs. */
+[role="dialog"][tabindex="-1"]:focus { outline: none; }
 
 /* Respect users who ask for less motion (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
@@ -853,7 +856,8 @@ a:hover { color: var(--accent-h); }
 .gap-coord { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
 .gap-coord-item { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .gap-countries { margin-top: var(--sp-3); }
-.tag-widening { background: var(--mark); border-color: var(--text-1); color: var(--text-1); }
+/* .tag is declared further down; the double class keeps the highlight winning. */
+.tag.tag-widening { background: var(--mark); border-color: var(--text-1); color: var(--text-1); }
 
 /* ═══════════════════════════════════════════════════════
    Misc utilities
