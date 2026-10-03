@@ -13,7 +13,10 @@ Source: the EU Funding & Tenders Portal search API (public, key `SEDIA`).
   status of open with only past cut-offs, so past deadlines are dropped here.
 
 Everything is cached in memory for 12 h, so the portal is hit at most twice a
-day. If a refresh fails we keep serving the stale copy (flagged `stale`).
+day. If a refresh fails we keep serving the stale copy (flagged `stale`). The last
+good fetch is also kept in the database (calls_snapshot): a restart within 12 h
+reads it instead of the portal, and when the portal is down or blocks us after a
+restart, the page shows that copy (stale) rather than nothing.
 """
 import html
 import json
@@ -305,18 +308,60 @@ def reset_cache() -> None:
     _topic_vec_cache.clear()
 
 
+def _save_snapshot(calls: list[dict], fetched_at: float) -> None:
+    try:
+        from db import SessionLocal
+        from models import CallsSnapshot
+        rows = [{k: v for k, v in c.items() if k != "vec"} for c in calls]
+        with SessionLocal() as db:
+            db.merge(CallsSnapshot(id=1, fetched_at=fetched_at, payload=rows))
+            db.commit()
+    except Exception:  # noqa: BLE001 — the in-memory cache still works without it
+        logger.exception("calls snapshot: save failed")
+
+
+def _load_snapshot() -> tuple[Optional[list[dict]], float]:
+    try:
+        from db import SessionLocal
+        from models import CallsSnapshot
+        with SessionLocal() as db:
+            snap = db.get(CallsSnapshot, 1)
+            if snap and snap.payload:
+                return list(snap.payload), float(snap.fetched_at or 0.0)
+    except Exception:  # noqa: BLE001
+        logger.exception("calls snapshot: load failed")
+    return None, 0.0
+
+
+def _fill_from_snapshot(max_age: Optional[float] = None) -> bool:
+    """Fill an empty cache from the stored snapshot (optionally only a recent one)."""
+    calls, fetched_at = _load_snapshot()
+    if not calls or (max_age is not None and time.time() - fetched_at >= max_age):
+        return False
+    embed_calls(calls)
+    with _lock:
+        if _cache["calls"] is None:
+            _cache.update(calls=calls, fetched_at=fetched_at)
+    return True
+
+
 def _refresh() -> bool:
     """Fetch + embed and swap the cache. Returns True on success. Never raises."""
     try:
         calls = fetch_calls()
         embed_calls(calls)
+        now = time.time()
         with _lock:
-            _cache.update(calls=calls, fetched_at=time.time(), failed_at=0.0)
+            _cache.update(calls=calls, fetched_at=now, failed_at=0.0)
+        _save_snapshot(calls, now)
         return True
     except Exception:  # noqa: BLE001 — upstream down / shape changed: degrade, don't 500
         logger.exception("EU Funding & Tenders fetch failed")
         with _lock:
             _cache["failed_at"] = time.time()
+            empty = _cache["calls"] is None
+        if empty:
+            _fill_from_snapshot()  # an older copy, served as stale, beats an empty page
         return False
 
 
@@ -350,7 +395,7 @@ def get_calls() -> tuple[list[dict], bool, Optional[str]]:
             with _refreshing:
                 with _lock:
                     have = _cache["calls"] is not None
-                if not have:
+                if not have and not _fill_from_snapshot(max_age=CACHE_TTL):
                     _refresh()
     with _lock:
         calls = _cache["calls"] or []

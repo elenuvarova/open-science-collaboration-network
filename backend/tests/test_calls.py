@@ -54,6 +54,7 @@ PAGE = {"results": [
 def _env(monkeypatch):
     eu_calls.reset_cache()
     monkeypatch.setattr(eu_calls, "_get_model", lambda: None)  # keyword-only matching
+    monkeypatch.setattr(eu_calls, "_load_snapshot", lambda: (None, 0.0))  # every test fetches
     with SessionLocal() as db:
         db.query(Topic).delete()
         db.add_all([

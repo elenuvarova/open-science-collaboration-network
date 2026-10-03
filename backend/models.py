@@ -165,3 +165,12 @@ class EtlRun(Base):
     ok = Column(Boolean, default=False)
     exit_code = Column(Integer, nullable=True)
 
+
+class CallsSnapshot(Base):
+    """The last good fetch of Horizon Europe calls (one row, id 1). A restart
+    reads it instead of hitting the EU portal again, and a portal outage or
+    block serves it, flagged stale, instead of an empty Calls page."""
+    __tablename__ = "calls_snapshot"
+    id = Column(Integer, primary_key=True)
+    fetched_at = Column(Float)  # unix time of the fetch
+    payload = Column(JSON)      # the parsed calls, without embedding vectors
