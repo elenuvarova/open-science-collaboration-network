@@ -31,7 +31,10 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
   const [ready, setReady] = useState(false);
   // On a phone-width canvas fewer, larger labels: the fit zoom there is ~0.5.
   const narrow = typeof window !== "undefined" && window.innerWidth < 640;
-  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  const LABEL_PX = narrow ? 20 : 12;
+  // Current label font size in graph units. On wider canvases the fit zoom is often
+  // below 1, so the font is scaled up to keep labels 12 px on screen at the fit.
+  const labelPx = useRef(LABEL_PX);
 
   // Fit the graph into the canvas minus an open legend, so the legend never sits
   // on top of nodes (cy.fit only knows a uniform padding).
@@ -50,7 +53,15 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
       zoom: z,
       pan: { x: lw + pad + (availW - bb.w * z) / 2 - bb.x1 * z, y: pad + (availH - bb.h * z) / 2 - bb.y1 * z },
     });
-  }, []);
+    if (!narrow) {
+      const fs = Math.min(24, Math.max(12, 12 / z));
+      if (Math.abs(fs - labelPx.current) > 0.1) {
+        labelPx.current = fs;
+        cy.nodes().style({ "font-size": fs, "text-max-width": 150 * fs / 12 });
+      }
+    }
+    cy.emit("zoom");
+  }, [narrow]);
 
   // Resolve design tokens from CSS variables (cytoscape can't read var()).
   const css = getComputedStyle(document.documentElement);
@@ -115,7 +126,7 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
         // Readable labels: 12 px at 1:1. When the view is zoomed out so far that
         // a label would render under 10 px it is hidden instead (zoom in to see
         // it): a smudge of 5 px text helps nobody.
-        "font-size": narrow ? 20 : 12,
+        "font-size": LABEL_PX,
         "font-family": "Outfit, system-ui, sans-serif",
         "text-valign": "bottom",
         "text-margin-y": 5,
@@ -131,9 +142,14 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
         // Node hover/select feedback — cytoscape parses this string itself and
         // can't read CSS var(), so it mirrors --dur (150ms) by hand.
         "transition-duration": "150ms",
-        // Cytoscape compares this against the size in device pixels.
-        "min-zoomed-font-size": 10 * dpr,
       },
+    },
+    {
+      // Set from the real on-screen size (see the zoom effect below). Cytoscape's
+      // own min-zoomed-font-size rounds the zoom up to a power of two, which let
+      // 7 px labels through on 1x and 2x screens.
+      selector: "node.tiny-label",
+      style: { "text-opacity": 0 },
     },
     {
       // Beyond the top LABELLED, labels appear on hover/selection (and in the
@@ -149,7 +165,7 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
         "border-color": textColor,
         "background-opacity": 1,
         "font-size": 14,
-        "min-zoomed-font-size": 0,
+        "text-opacity": 1,
       },
     },
     {
@@ -191,7 +207,7 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
         "border-width": 2,
         "border-color": textColor,
         "font-size": 14,
-        "min-zoomed-font-size": 0,
+        "text-opacity": 1,
         "z-index": 10,
         opacity: 1,
       },
@@ -241,6 +257,23 @@ export default function GraphCanvas({ nodes: allNodes, edges: allEdges, onNodeCl
     );
     return () => { fits.forEach(clearTimeout); cy.off("tapstart scrollzoom", markMoved); sim.stop(); };
   }, [ready, nodes, topEdges, fitGraph]);
+
+  // Labels hide rather than shrink: below 10 px on screen they are unreadable,
+  // so they wait until the user zooms in (selected/hovered labels always show).
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !ready) return;
+    let hidden = null;
+    const sync = () => {
+      const hide = cy.zoom() * labelPx.current < 10;
+      if (hide === hidden) return;
+      hidden = hide;
+      cy.batch(() => (hide ? cy.nodes().addClass("tiny-label") : cy.nodes().removeClass("tiny-label")));
+    };
+    sync();
+    cy.on("zoom", sync);
+    return () => cy.off("zoom", sync);
+  }, [ready, nodes]);
 
   // Interaction: tap to select, hover to highlight neighbours. Registered once
   // (no removeAllListeners — that would also strip cola's drag listeners).
