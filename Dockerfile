@@ -40,6 +40,10 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD wget -qO- http://127.0.0.1:${PORT}/api/health || exit 1
 
-# --proxy-headers + trusted forwarded IPs so request.client.host is the real
-# client (from X-Forwarded-For set by Traefik), which the per-IP rate limiter keys on.
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*' --no-server-header"]
+# --proxy-headers so request.client.host is the real client (from the
+# X-Forwarded-For Traefik sets), which the per-IP rate limiter keys on.
+# FORWARDED_ALLOW_IPS lists the proxy's networks (in Coolify: the `coolify`
+# Docker network, 10.0.1.0/24 + its IPv6 range); uvicorn then takes the
+# right-most address not in it, so a forged X-Forwarded-For can't pick the key.
+# Unset (local docker run) it falls back to trusting any proxy, as before.
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips=\"${FORWARDED_ALLOW_IPS:-*}\" --no-server-header"]
